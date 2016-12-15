@@ -7,7 +7,7 @@ _buckets = [(10, 8), (12, 10), (15, 12), (18, 15), (22, 18), (25, 22)]
 
 
 class Reader(object):
-    def __init__(self, vocab_size=10000, num_steps=18, batch_size = 128):
+    def __init__(self, vocab_size=10000, num_steps=18, batch_size=128):
         suffix = '_1'
         self.post = 'stc_weibo_train_post' + suffix
         self.response = 'stc_weibo_train_response' + suffix
