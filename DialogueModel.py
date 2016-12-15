@@ -5,6 +5,7 @@ import time
 
 import seq2seq
 
+
 class Config(object):
     init_scale = 0.05
     learning_rate = 1.0
@@ -20,7 +21,7 @@ class Config(object):
     vocab_size = 40000 + 4 
 
 
-class Dialogue():
+class Dialogue(object):
     def __init__(self, config, variational=False, forward_only=False):
         self.vocab_size = config.vocab_size
         num_layers = config.num_layers
@@ -28,11 +29,11 @@ class Dialogue():
 
         #self.batch_size = config.batch_size
         self.num_steps = config.num_steps
-	num_samples = 768 
+        num_samples = 768
 
         with tf.variable_scope("RNN_cell"):
-		cell = tf.nn.rnn_cell.GRUCell(num_units)
-		cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers)
+            cell = tf.nn.rnn_cell.GRUCell(num_units)
+            cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers)
 
         self.inputs = [tf.placeholder(tf.int64, shape=(None,), name='input_%i' % t)
                     for t in range(self.num_steps)]
@@ -49,22 +50,23 @@ class Dialogue():
         softmax_loss_function = None
 
         with tf.variable_scope("sampled_softmax"):
-		if num_samples > 0 and num_samples < self.vocab_size:
-		    w = tf.get_variable("proj_w", [num_units, self.vocab_size])
-		    w_t = tf.transpose(w)
-		    b = tf.get_variable("proj_b", [self.vocab_size])
-		    output_projection = (w, b)
+            if 0 < num_samples < self.vocab_size:
+                w = tf.get_variable("proj_w", [num_units, self.vocab_size])
+                w_t = tf.transpose(w)
+                b = tf.get_variable("proj_b", [self.vocab_size])
+                output_projection = (w, b)
 
-		    def sampled_loss(inputs, labels):
-			labels = tf.reshape(labels, [-1, 1])
-			# compute the sampled_softmax_loss using 32bit floats to avoid numerical instabilities.
-			local_w_t = tf.cast(w_t, tf.float32)
-			local_b = tf.cast(b, tf.float32)
-			local_inputs = tf.cast(inputs, tf.float32)
+                def sampled_loss(inputs, labels):
+                    labels = tf.reshape(labels, [-1, 1])
+                    # compute the sampled_softmax_loss using 32bit floats to avoid numerical instabilities.
+                    local_w_t = tf.cast(w_t, tf.float32)
+                    local_b = tf.cast(b, tf.float32)
+                    local_inputs = tf.cast(inputs, tf.float32)
 
-			return tf.nn.sampled_softmax_loss(local_w_t, local_b, local_inputs, labels,
-							 num_samples, self.vocab_size)
-		softmax_loss_function = sampled_loss
+                    return tf.nn.sampled_softmax_loss(local_w_t, local_b, local_inputs, labels,
+                                     num_samples, self.vocab_size)
+            softmax_loss_function = sampled_loss
+
 	''' 
         with tf.variable_scope("encoder"):
             encoder_cell = tf.nn.rnn_cell.EmbeddingWrapper(cell, embedding_classes=self.vocab_size, embedding_size=num_units)
@@ -120,10 +122,10 @@ class Dialogue():
             #                           self.encoder_state, out_cell, self.vocab_size, embedding_size=num_units)
 	'''
 
-	def seq2seq_f(forward_only):
-		return embedding_attention_seq2seq(self.inputs, self.targets, cell,
-					 self.vocab_size, self.vocab_size, embedding_size=num_units,
-					 output_projection=output_projection, feed_previous=forward_only)
+        def seq2seq_f(forward_only):
+            return seq2seq.embedding_attention_seq2seq(self.inputs, self.targets, cell,
+                         self.vocab_size, self.vocab_size, embedding_size=num_units,
+                         output_projection=output_projection, feed_previous=forward_only)
         '''
 	attn_dis = [tf.reshape(attn_d, [-1, int(attn_d.get_shape()[1]), 1, 1])
 		for attn_d in self.atten_distributions]
@@ -132,7 +134,7 @@ class Dialogue():
         '''
         self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in outputs] # for output
        
-	seq2seq.model_with_buckets()
+	    #seq2seq.model_with_buckets()
 	'''
         with tf.variable_scope("Loss"): 
 		# a Scalar
