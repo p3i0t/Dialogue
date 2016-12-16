@@ -126,7 +126,7 @@ def main():
             r.batch_size = 10
 
             for ind, (x, y, x_early_steps, y_early_steps) in enumerate(r.iterator()):
-                loss, indices = test_dialogue.step(session, x, y, x_early_steps, True)
+                loss, indices, weights = test_dialogue.step(session, x, y, x_early_steps, True)
 
                 indices = np.array(indices)
                 for i in range(indices.shape[1]):
