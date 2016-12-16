@@ -90,12 +90,12 @@ class Dialogue(object):
         feed_dict.update({self.targets[t]: y[:, t] for t in range(self.num_steps)})
         feed_dict.update({self.early_stops: x_early_stops})
         if forward_only:
-            _, loss, indices = session.run([tf.no_op(), self.loss, self.output_indices], feed_dict)
-            return loss, indices
+            _, loss, indices, weights = session.run([tf.no_op(), self.loss, self.output_indices, self.weights], feed_dict)
+            return loss, indices, weights
         else:
-            _, loss, summaries = session.run([self.train_op, self.loss, self.merged_summaries], feed_dict)
+            _, loss, summaries, weights = session.run([self.train_op, self.loss, self.merged_summaries, self.weights], feed_dict)
             #summary_writer.add_summary(summaries)
-            return loss
+            return loss, weights
 
 
 def main():
@@ -114,9 +114,14 @@ def main():
         for epoch in xrange(10):
             r.batch_size=128
             for step, (x, y, x_early_steps, y_early_steps) in enumerate(r.iterator()):
-                loss = dialogue.step(session, x, y, x_early_steps)
+                loss, weights = dialogue.step(session, x, y, x_early_steps)
                 if step % 10 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
+                    if loss < 0.2:
+                        print "weights[0] : {}".format(weights[0])
+                        print "weights[1] : {}".format(weights[1])
+                        print "weights[-2] : {}".format(weights[-2])
+                        print "weights[-1] : {}".format(weights[-1])
 
             r.batch_size = 10
 
