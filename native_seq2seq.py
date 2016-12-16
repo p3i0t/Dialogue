@@ -111,22 +111,25 @@ def main():
 
         tf.global_variables_initializer().run()
 
-        for step, (x, y, x_early_steps, y_early_steps) in enumerate(r.iterator()):
-            loss = dialogue.step(session, x, y, x_early_steps)
-            if step % 10 == 1:
-                print "step {:<4}, loss: {:.4}".format(step, loss)
+        for epoch in xrange(10):
+            r.batch_size=128
+            for step, (x, y, x_early_steps, y_early_steps) in enumerate(r.iterator()):
+                loss = dialogue.step(session, x, y, x_early_steps)
+                if step % 10 == 1:
+                    print "step {:<4}, loss: {:.4}".format(step, loss)
 
-        r.batch_size = 10
-        for step, (x, y, x_early_steps, y_early_steps) in enumerate(r.iterator()):
-            loss, indices = test_dialogue.step(session, x, y, x_early_steps, True)
+            r.batch_size = 10
 
-            indices = np.array(indices)
-            for i in range(indices.shape[1]):
-                print "************"
-                print "post:     ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], x[i])))
-                print "response: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], indices[:, i])))
+            for ind, (x, y, x_early_steps, y_early_steps) in enumerate(r.iterator()):
+                loss, indices = test_dialogue.step(session, x, y, x_early_steps, True)
 
-            break # evaluate only one batch
+                indices = np.array(indices)
+                for i in range(indices.shape[1]):
+                    print "************"
+                    print "post:     ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], x[i])))
+                    print "response: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], indices[:, i])))
+
+                break # evaluate only one batch
 
 if __name__ == '__main__':
     main()
