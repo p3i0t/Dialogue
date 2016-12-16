@@ -65,16 +65,23 @@ class Dialogue(object):
 
                     return tf.nn.sampled_softmax_loss(local_w_t, local_b, local_inputs, labels,
                                      num_samples, self.vocab_size)
+
             softmax_loss_function = sampled_loss
 
         outputs, states = tf.nn.seq2seq.embedding_attention_seq2seq(self.inputs, self.targets, cell, self.vocab_size, self.vocab_size,
                                                   num_units, output_projection=output_projection, feed_previous=forward_only)
 
+        #print '******', states
         self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in outputs] # for output
 
         with tf.variable_scope("Loss"):
             # a Scalar
-            self.loss = tf.nn.seq2seq.sequence_loss(outputs, self.targets, self.weights, softmax_loss_function=softmax_loss_function)#, self.vocab_size)
+            print outputs[0], len(outputs)
+            print self.targets[0], len(self.targets)
+            print self.weights[0], len(self.weights)
+
+            self.loss = tf.nn.seq2seq.sequence_loss(outputs, self.targets, self.weights,
+                                                    softmax_loss_function=softmax_loss_function)
             loss_summary = tf.scalar_summary('loss', self.loss)
 
         with tf.variable_scope("Optimizer"):
@@ -109,6 +116,7 @@ def main():
         with tf.variable_scope("Model", reuse=True):
             test_dialogue = Dialogue(config, variational=False, forward_only=True)
 
+        exit(0)
         tf.global_variables_initializer().run()
 
         for epoch in xrange(10):

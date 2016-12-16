@@ -16,9 +16,9 @@ class Reader(object):
         self.batch_size = batch_size
         self._build_vocab()
 
-        self.control_word_to_id={'<GO>':0,
-                    '<PAD>':1, '<UNK>':2, '<EOS>':3}
-        self.control_id_to_word=dict(zip(range(4), ['<GO>','<PAD>','<UNK>','<EOS>']))
+        self.control_word_to_id={'<PAD>':0,
+                    '<GO>': 1, '<UNK>': 2, '<EOS>': 3}
+        self.control_id_to_word = dict(zip(range(4), ['<PAD>', '<GO>', '<UNK>', '<EOS>']))
 
     def read_words(self, path):
         words = []
@@ -42,7 +42,7 @@ class Reader(object):
         count_pairs = sorted(counter.most_common(self.vocab_size), key = lambda x: (-x[1], x[0]))
         words, _ = list(zip(*count_pairs))
         print("Real words in vocab: ", len(words))
-        words = ['<GO>', '<PAD>', '<UNK>', '<EOS>'] + list(words)
+        words = ['<PAD>', '<GO>', '<UNK>', '<EOS>'] + list(words)
         self.word_to_id = dict(zip(words, range(len(words))))
         self.id_to_word = dict(zip(self.word_to_id.values(), self.word_to_id.keys()))
         np.savez_compressed('vocab.npz', word_to_id=self.word_to_id, id_to_word=self.id_to_word)
@@ -95,6 +95,40 @@ class Reader(object):
             y_early_stops = Y_early_stops[i*self.batch_size: (i+1)*self.batch_size]
             yield (x, y, x_early_stops, y_early_stops)
 
+    def dynamic_iterator(self):
+        posts = []
+        posts_lens = []
+        for step, line in enumerate(open(self.post)):
+            tokens, l = self.tokenize_sentence(line)
+            posts_lens.append(l)
+            posts.append(tokens)
+
+        responses = []
+        responses_lens = []
+        for step, line in enumerate(open(self.response)):
+            tokens, l = self.tokenize_sentence(line)
+            responses_lens.append(l)
+            responses.append(tokens)
+
+        data_len = len(responses)
+
+        X = np.array(posts)
+        X_early_stops = np.array(posts_lens)
+        Y = np.array(responses)
+
+        num_batches = data_len / self.batch_size
+        shuffle = np.random.permutation(num_batches)
+        for ind in range(num_batches):
+            i = shuffle[ind]
+            x = X[i*self.batch_size: (i+1)*self.batch_size]
+            x_early_stops = X_early_stops[i*self.batch_size: (i+1)*self.batch_size]
+            y = Y[i*self.batch_size: (i+1)*self.batch_size]
+
+            #y_early_stops = Y_early_stops[i*self.batch_size: (i+1)*self.batch_size]
+
+            yield (x, y, x_early_stops)
+
+
     def test(self):
         for step , line in enumerate(open(self.post)):
             if step % 10 == 0:
@@ -108,6 +142,8 @@ class Reader(object):
             
 if __name__ == '__main__':
     r = Reader(vocab_size=40000)
+    r.dynamic_iterator()
+    exit(0)
     for step, (x, y, x_early_stops, y_early_stops) in enumerate(r.iterator()):
         print zip(x_early_stops, y_early_stops)
         print "***************"

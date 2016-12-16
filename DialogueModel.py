@@ -67,7 +67,7 @@ class Dialogue(object):
                                      num_samples, self.vocab_size)
             softmax_loss_function = sampled_loss
 
-	''' 
+    '''
         with tf.variable_scope("encoder"):
             encoder_cell = tf.nn.rnn_cell.EmbeddingWrapper(cell, embedding_classes=self.vocab_size, embedding_size=num_units)
             self.encoder_outputs, self.encoder_state = tf.nn.rnn(encoder_cell, self.inputs, dtype=tf.float32, sequence_length=self.early_stops)
@@ -122,10 +122,10 @@ class Dialogue(object):
             #                           self.encoder_state, out_cell, self.vocab_size, embedding_size=num_units)
 	'''
 
-        def seq2seq_f(forward_only):
-            return seq2seq.embedding_attention_seq2seq(self.inputs, self.targets, cell,
-                         self.vocab_size, self.vocab_size, embedding_size=num_units,
-                         output_projection=output_projection, feed_previous=forward_only)
+            def seq2seq_f(forward_only):
+                return seq2seq.embedding_attention_seq2seq(self.inputs, self.targets, cell,
+                             self.vocab_size, self.vocab_size, embedding_size=num_units,
+                             output_projection=output_projection, feed_previous=forward_only)
         '''
 	attn_dis = [tf.reshape(attn_d, [-1, int(attn_d.get_shape()[1]), 1, 1])
 		for attn_d in self.atten_distributions]
@@ -150,8 +150,8 @@ class Dialogue(object):
 
 	'''
         with tf.variable_scope("Optimizer"):
-		optimizer = tf.train.AdamOptimizer(name='adam')
-		self.train_op = optimizer.minimize(self.loss)
+            optimizer = tf.train.AdamOptimizer(name='adam')
+            self.train_op = optimizer.minimize(self.loss)
 
         self.saver = tf.train.Saver()
 	self.scalar_summaries = tf.merge_summary([recon_loss_summary, loss_summary])
