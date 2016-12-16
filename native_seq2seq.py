@@ -109,9 +109,9 @@ def main():
         with tf.variable_scope("Model", reuse=True):
             test_dialogue = Dialogue(config, variational=False, forward_only=True)
 
-        tf.global_variables_initializer().run()
+        tf.initialize_all_variables().run()
 
-        for epoch in xrange(10):
+        for epoch in xrange(20):
             r.batch_size=128
             for step, (x, y, x_early_steps, y_early_steps) in enumerate(r.iterator()):
                 loss = dialogue.step(session, x, y, x_early_steps)
@@ -127,6 +127,7 @@ def main():
                 for i in range(indices.shape[1]):
                     print "************"
                     print "post:     ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], x[i])))
+                    print "candidate:     ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], y[i])))
                     print "response: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], indices[:, i])))
 
                 break # evaluate only one batch
