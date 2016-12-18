@@ -16,7 +16,7 @@ class Reader(object):
         self.batch_size = batch_size
         self._build_vocab()
 
-        self.control_word_to_id={'<PAD>':0,
+        self.control_word_to_id={'<PAD>': 0,
                     '<GO>': 1, '<UNK>': 2, '<EOS>': 3}
         self.control_id_to_word = dict(zip(range(4), ['<PAD>', '<GO>', '<UNK>', '<EOS>']))
 

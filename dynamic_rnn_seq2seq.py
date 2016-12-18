@@ -86,6 +86,8 @@ class Dialogue(object):
 
         outputs, states, self.atten_distributions = seq2seq_f(forward_only)
 
+        self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in outputs] # for output
+
         self.loss = tf.nn.seq2seq.sequence_loss(outputs, split_targets, split_weights,
                                                 softmax_loss_function=softmax_loss_function)
         self.train_op = tf.train.AdamOptimizer(name='adam').minimize(self.loss)
@@ -97,8 +99,9 @@ class Dialogue(object):
         #print "feed_dict: ", feed_dict
 
         if forward_only:
-            _, loss, atten_distributions = session.run([tf.no_op(), self.loss,  self.atten_distributions], feed_dict)
-            return loss, atten_distributions
+            _, loss, indices, atten_distributions = session.run([tf.no_op(), self.loss, self.output_indices,
+                                                                 self.atten_distributions], feed_dict)
+            return loss, indices, atten_distributions
         else:
             _, loss = session.run([self.train_op, self.loss], feed_dict)
             return loss
@@ -121,6 +124,7 @@ if __name__ == '__main__':
 
         for epoch in xrange(10):
             r.batch_size = config.batch_size
+            '''
             for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
 
                 loss = dialogue.step(session, x, y, x_early_steps)
@@ -128,14 +132,17 @@ if __name__ == '__main__':
                     print "step {:<4}, loss: {:.4}".format(step, loss)
 
             r.batch_size = 10
-
+            '''
             for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
-                loss, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
+                #loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
 
-                indices = np.array(indices)
-                for i in range(indices.shape[1]):
+                #indices = np.array(indices)
+                for i in range(x.shape[1]):
+                #for i in range(indices.shape[1]):
                     print "************"
-                    print "post:     ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], x[i])))
-                    print "response: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind!=r.control_word_to_id['<PAD>'], indices[:, i])))
+                    print "post     : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[i])))
+                    print "reference: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[i])))
+                    #print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[:, i])))
 
                 break # evaluate only one batch
+            exit(0)
