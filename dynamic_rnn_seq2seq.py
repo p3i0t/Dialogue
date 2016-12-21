@@ -112,7 +112,6 @@ if __name__ == '__main__':
     config = Config()
 
     with tf.Session() as session:
-        tf.global_variables_initializer().run()
         with tf.variable_scope('Model', reuse=None):
             dialogue = Dialogue(config, forward_only=False)
         with tf.variable_scope('Model', reuse=True):
@@ -120,11 +119,11 @@ if __name__ == '__main__':
 
         r = reader.Reader(num_steps=config.num_steps, batch_size=config.batch_size)
 
-        tf.global_variables_initializer().run()
+        tf.initialize_all_variables().run()
 
         for epoch in xrange(10):
             r.batch_size = config.batch_size
-            '''
+            
             for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
 
                 loss = dialogue.step(session, x, y, x_early_steps)
@@ -132,17 +131,17 @@ if __name__ == '__main__':
                     print "step {:<4}, loss: {:.4}".format(step, loss)
 
             r.batch_size = 10
-            '''
+            
             for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
-                #loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
+                loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
 
                 #indices = np.array(indices)
-                for i in range(x.shape[1]):
+                for i in range(x.shape[0]):
                 #for i in range(indices.shape[1]):
                     print "************"
                     print "post     : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[i])))
                     print "reference: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[i])))
-                    #print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[:, i])))
+                    print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[i])))
 
                 break # evaluate only one batch
             exit(0)
