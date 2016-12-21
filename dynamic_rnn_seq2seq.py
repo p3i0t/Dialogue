@@ -92,6 +92,11 @@ class Dialogue(object):
                                                 softmax_loss_function=softmax_loss_function)
         self.train_op = tf.train.AdamOptimizer(name='adam').minimize(self.loss)
 
+        self.saver = tf.train.Saver()
+
+        loss_summary = tf.scalar_summary('loss', self.loss)
+        self.merged_summaries = tf.merge_all_summaries()
+
     def step(self, session, x, y, x_early_stops, forward_only=False):
         feed_dict = {self.inputs: np.expand_dims(x, 2)}
         feed_dict.update({self.targets: y})
@@ -100,7 +105,7 @@ class Dialogue(object):
 
         if forward_only:
             _, loss, indices, atten_distributions = session.run([tf.no_op(), self.loss, self.output_indices,
-                                                                 self.atten_distributions], feed_dict)
+                                                                 self.atten_distributions,], feed_dict)
             return loss, indices, atten_distributions
         else:
             _, loss = session.run([self.train_op, self.loss], feed_dict)
@@ -121,27 +126,33 @@ if __name__ == '__main__':
 
         tf.initialize_all_variables().run()
 
-        for epoch in xrange(10):
+        for epoch in xrange(50):
             r.batch_size = config.batch_size
-            
+            print "Epoch: {}".format(epoch+1) 
             for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
 
                 loss = dialogue.step(session, x, y, x_early_steps)
                 if step % 10 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
-
-            r.batch_size = 10
+                    dialogue.saver.save(session, 'logdir/train/dialogue.ckpt')
+            r.batch_size = 20
             
             for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
                 loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
 
-                #indices = np.array(indices)
-                for i in range(x.shape[0]):
+                try:
+                    assert x.shape[0] == len(indices[0])
+                except:
+                    print 'x shape[0]: ', x.shape[0]
+                    print 'len indices: ', len(indices)
+
+                indices = np.array(indices) #shape: (T, B)
+                for i in range(indices.shape[1]):
                 #for i in range(indices.shape[1]):
                     print "************"
                     print "post     : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[i])))
                     print "reference: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[i])))
-                    print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[i])))
+                    print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[:, i])))
 
                 break # evaluate only one batch
-            exit(0)
+            
