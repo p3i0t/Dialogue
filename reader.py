@@ -8,9 +8,9 @@ _buckets = [(10, 8), (12, 10), (15, 12), (18, 15), (22, 18), (25, 22)]
 
 class Reader(object):
     def __init__(self, vocab_size=10000, num_steps=18, batch_size=128):
-        suffix = '_10'
-        self.post = '../stc_weibo_train_post' + suffix
-        self.response = '../stc_weibo_train_response' + suffix
+        suffix = '_1'
+        self.post = 'stc_weibo_train_post' + suffix
+        self.response = 'stc_weibo_train_response' + suffix
         self.vocab_size = vocab_size  #shared by post & response
         self.num_steps = num_steps
         self.batch_size = batch_size
@@ -53,11 +53,12 @@ class Reader(object):
     def tokenize_sentence(self, sentence):
         words = sentence.split()
         l = len(words)
-        if len(words) < self.num_steps:
-            words = words + ['<PAD>']* (self.num_steps - len(words))
+        if l < self.num_steps:
+            words = words + ['<PAD>'] * (self.num_steps - l)
         else:
             words = words[:self.num_steps]
-        return map(lambda x: self.word_to_id.get(x, self.word_to_id['<UNK>']), words), l
+            l = self.num_steps
+        return map(lambda x: self.word_to_id.get(x, self.control_word_to_id['<UNK>']), words), l
 
     def recover_sentence(self, ids):
         ids = filter(lambda id: id!=self.control_word_to_id['<PAD>'], ids)
@@ -128,8 +129,17 @@ class Reader(object):
 
             yield (x, y, x_early_stops)
 
-
     def test(self):
+        posts = []
+        posts_lens = []
+        for step, line in enumerate(open(self.post)):
+            tokens, l = self.tokenize_sentence(line)
+            assert np.sum(np.array(tokens)!=0) == l
+
+        print "Len tests passed!"
+            #posts_lens.append(l)
+            #posts.append(tokens)
+        exit(0)
         for step , line in enumerate(open(self.post)):
             if step % 10 == 0:
                 input(">> ")
@@ -142,7 +152,8 @@ class Reader(object):
             
 if __name__ == '__main__':
     r = Reader(vocab_size=40000)
-    r.dynamic_iterator()
+    #r.dynamic_iterator()
+    r.test()
     exit(0)
     for step, (x, y, x_early_stops, y_early_stops) in enumerate(r.iterator()):
         print zip(x_early_stops, y_early_stops)

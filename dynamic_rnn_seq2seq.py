@@ -4,6 +4,8 @@ import reader
 import seq2seq
 import time
 
+import debug_bi_dy_rnn
+
 class Config(object):
     init_scale = 0.05
     learning_rate = 1.0
@@ -20,14 +22,13 @@ class Config(object):
 
 
 class Dialogue(object):
-    def __init__(self, config, forward_only=False):
+    def __init__(self, config, forward_only=False, bidirectional=True):
         self.vocab_size = config.vocab_size
         num_layers = config.num_layers
-        num_units = config.hidden_size
+        self.num_units = config.hidden_size
 
         #self.batch_size = config.batch_size
         self.num_steps = config.num_steps
-        #num_samples = 768
 
         self.inputs = tf.placeholder(tf.int64, shape=(None, self.num_steps, 1), name='input')
         self.early_stops = tf.placeholder(tf.int64, shape=(None, ), name='early_stops')
@@ -37,6 +38,10 @@ class Dialogue(object):
 
         with tf.variable_scope("define_sampled_softmax_with_outprojection"):
             if 0 < num_samples < self.vocab_size:
+                if bidirectional:
+                    num_units = 2*self.num_units
+                else:
+                    num_units = self.num_units
                 w = tf.get_variable("proj_w", [num_units, self.vocab_size])
                 w_t = tf.transpose(w)
                 b = tf.get_variable("proj_b", [self.vocab_size])
@@ -54,21 +59,41 @@ class Dialogue(object):
 
             softmax_loss_function = sampled_loss
 
-        with tf.variable_scope("RNN_cell"):
-            cell = tf.nn.rnn_cell.GRUCell(num_units)
+        with tf.variable_scope("RNN_cells"):
+            cell = tf.nn.rnn_cell.GRUCell(self.num_units)
             cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers)
+
+            if bidirectional:
+                bi_cell = tf.nn.rnn_cell.GRUCell(2 * self.num_units)
+                bi_cell = tf.nn.rnn_cell.MultiRNNCell([bi_cell] * num_layers)
 
         with tf.variable_scope("Dynamic_RNN"):
             encoder_cell = tf.nn.rnn_cell.EmbeddingWrapper(cell, embedding_classes=self.vocab_size,
-                                                           embedding_size=num_units)
-            outputs, self.encoder_states = tf.nn.dynamic_rnn(encoder_cell, self.inputs, self.early_stops,
+                                                           embedding_size=self.num_units)
+            if bidirectional:
+                outputs, self.encoder_states = debug_bi_dy_rnn.bidirectional_dynamic_rnn(encoder_cell, encoder_cell, self.inputs,
+                #outputs, self.encoder_states = tf.nn.bidirectional_dynamic_rnn(encoder_cell, encoder_cell, self.inputs,
+                                                            sequence_length=self.early_stops, dtype=tf.float32,
+                                                                               time_major=False, scope='bi_rnn')
+            else:
+                outputs, self.encoder_states = tf.nn.dynamic_rnn(encoder_cell, self.inputs, self.early_stops,
                                                              dtype=tf.float32, time_major=False)
 
         with tf.variable_scope("atten_states"):
+            if bidirectional and isinstance(outputs, tuple) and isinstance(self.encoder_states, tuple):
+                outputs = tf.concat(2, [outputs[0], outputs[1]])
+                self.encoder_states = (tf.concat(1, [self.encoder_states[0][0], self.encoder_states[1][0]]),)
+                assert outputs.get_shape()[2] == 2 * self.num_units
+                assert isinstance(self.encoder_states, tuple) and len(self.encoder_states) == 1
+
             # Split the outputs to list of 2D Tensors with length num_steps with shape[batch_size, embedding_size]
             split_outputs = [tf.squeeze(output, [1]) for output in tf.split(1, self.num_steps, outputs)]
+            if bidirectional:
+                output_size = cell.output_size * 2
+            else:
+                output_size = cell.output_size
             # First calculate a concatenation of encoder outputs to put attention on.
-            top_states = [tf.reshape(e, [-1, 1, cell.output_size])
+            top_states = [tf.reshape(e, [-1, 1, output_size])
                 for e in split_outputs]
             attention_states = tf.concat(1, top_states)
 
@@ -77,10 +102,16 @@ class Dialogue(object):
             split_weights = [tf.squeeze(weight, [1]) for weight in tf.split(1, self.num_steps, mask)]
             split_targets = [tf.squeeze(target, [1]) for target in tf.split(1, self.num_steps, self.targets)]
 
-            self.dec_inputs = [tf.ones_like(split_targets[0], dtype=tf.int32, name="<GO>")] + split_targets[:-1]
+            self.dec_inputs = [tf.ones_like(split_targets[0], dtype=tf.int32, name="GO")] + split_targets[:-1]
 
         def seq2seq_decoder(forward_only):
-            outcell = cell
+            if bidirectional:
+                outcell = bi_cell
+                num_units = 2*self.num_units
+            else:
+                outcell = cell
+                num_units = self.num_units
+
             return seq2seq.embedding_attention_decoder(self.dec_inputs, self.encoder_states, attention_states,
                                                        outcell, self.vocab_size, num_units,
                                                        output_projection=output_projection, feed_previous=forward_only)
@@ -89,7 +120,9 @@ class Dialogue(object):
             outputs, states, self.atten_distributions = seq2seq_decoder(forward_only)
 
         with tf.variable_scope('output_indices'):
-            self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in outputs] # for output
+            #output_projection first
+            projected_outputs = [tf.matmul(output, output_projection[0])+output_projection[1] for output in outputs]
+            self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in projected_outputs]
 
         with tf.variable_scope("loss"):
             self.loss = tf.nn.seq2seq.sequence_loss(outputs, split_targets, split_weights,
@@ -112,7 +145,7 @@ class Dialogue(object):
 
         if forward_only:
             _, loss, indices, atten_distributions = session.run([tf.no_op(), self.loss, self.output_indices,
-                                                                 self.atten_distributions,], feed_dict)
+                                                                 self.atten_distributions], feed_dict)
             return loss, indices, atten_distributions
         else:
             _, loss = session.run([self.train_op, self.loss], feed_dict)
@@ -121,11 +154,12 @@ class Dialogue(object):
 
 if __name__ == '__main__':
     config = Config()
+    bidirectional = True
     with tf.Session() as session:
         with tf.variable_scope('Model', reuse=None):
-            dialogue = Dialogue(config, forward_only=False)
+            dialogue = Dialogue(config, forward_only=False, bidirectional=bidirectional)
         with tf.variable_scope('Model', reuse=True):
-            evaluate_dialogue = Dialogue(config, forward_only=True)
+            evaluate_dialogue = Dialogue(config, forward_only=True, bidirectional=bidirectional)
 
         r = reader.Reader(num_steps=config.num_steps, batch_size=config.batch_size)
 
@@ -142,7 +176,7 @@ if __name__ == '__main__':
 
                 if step % 100 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
-                    dialogue.saver.save(session, 'logdir_dfd2/train/dialogue.ckpt') # save the model periodically
+                    dialogue.saver.save(session, 'logdir/train/dialogue.ckpt') # save the model periodically
 
             print "Mean loss: {:.4f}".format(np.mean(loss_list))
             print "Time Elapsed: {:.4f}".format(time.time() - s)
@@ -152,7 +186,7 @@ if __name__ == '__main__':
                 loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
 
                 assert x.shape[0] == len(indices[0])
-                indices = np.array(indices) #shape: (T, B)
+                indices = np.array(indices)#shape: (T, B)
                 for i in range(indices.shape[1]):
                     print "************"
                     print "post     : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[i])))
@@ -160,4 +194,3 @@ if __name__ == '__main__':
                     print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[:, i])))
 
                 break # evaluate only one batch
-            
