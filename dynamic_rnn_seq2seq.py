@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import reader
 import seq2seq
-
+import time
 
 class Config(object):
     init_scale = 0.05
@@ -129,12 +129,17 @@ if __name__ == '__main__':
         for epoch in xrange(500):
             r.batch_size = config.batch_size
             print "Epoch: {}".format(epoch+1) 
+            loss_list = []
+            s = time.time()
             for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
-
                 loss = dialogue.step(session, x, y, x_early_steps)
-                if step % 1000 == 1:
+                loss_list.append(loss)
+
+                if step % 100 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
-                    dialogue.saver.save(session, 'logdir/train/dialogue.ckpt')
+                    dialogue.saver.save(session, 'logdir_dfd2/train/dialogue.ckpt')
+            print "Mean loss: {.4f}".format(np.mean(loss_list))
+            print "Time Elapsed: {.4f}".format(time.time() - s)
             r.batch_size = 100
             
             for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
