@@ -126,16 +126,16 @@ if __name__ == '__main__':
 
         tf.initialize_all_variables().run()
 
-        for epoch in xrange(50):
+        for epoch in xrange(500):
             r.batch_size = config.batch_size
             print "Epoch: {}".format(epoch+1) 
             for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
 
                 loss = dialogue.step(session, x, y, x_early_steps)
-                if step % 10 == 1:
+                if step % 1000 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
                     dialogue.saver.save(session, 'logdir/train/dialogue.ckpt')
-            r.batch_size = 20
+            r.batch_size = 100
             
             for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
                 loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
