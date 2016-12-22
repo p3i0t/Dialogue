@@ -138,18 +138,14 @@ if __name__ == '__main__':
                 if step % 100 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
                     dialogue.saver.save(session, 'logdir_dfd2/train/dialogue.ckpt')
-            print "Mean loss: {.4f}".format(np.mean(loss_list))
-            print "Time Elapsed: {.4f}".format(time.time() - s)
+            print "Mean loss: {:.4f}".format(np.mean(loss_list))
+            print "Time Elapsed: {:.4f}".format(time.time() - s)
             r.batch_size = 100
             
             for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
                 loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
 
-                try:
-                    assert x.shape[0] == len(indices[0])
-                except:
-                    print 'x shape[0]: ', x.shape[0]
-                    print 'len indices: ', len(indices)
+                assert x.shape[0] == len(indices[0])
 
                 indices = np.array(indices) #shape: (T, B)
                 for i in range(indices.shape[1]):
