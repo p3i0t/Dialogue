@@ -33,9 +33,9 @@ class Dialogue(object):
         self.early_stops = tf.placeholder(tf.int64, shape=(None, ), name='early_stops')
         self.targets = tf.placeholder(tf.int64, shape=(None, self.num_steps), name='output')
 
-        num_samples = 512
+        num_samples = 1024
 
-        with tf.variable_scope("sampled_softmax"):
+        with tf.variable_scope("define_sampled_softmax_with_outprojection"):
             if 0 < num_samples < self.vocab_size:
                 w = tf.get_variable("proj_w", [num_units, self.vocab_size])
                 w_t = tf.transpose(w)
@@ -64,44 +64,51 @@ class Dialogue(object):
             outputs, self.encoder_states = tf.nn.dynamic_rnn(encoder_cell, self.inputs, self.early_stops,
                                                              dtype=tf.float32, time_major=False)
 
-        # Split the outputs to list of 2D Tensors with length num_steps with shape[batch_size, embedding_size]
-        split_outputs = [tf.squeeze(output, [1]) for output in tf.split(1, self.num_steps, outputs)]
         with tf.variable_scope("atten_states"):
+            # Split the outputs to list of 2D Tensors with length num_steps with shape[batch_size, embedding_size]
+            split_outputs = [tf.squeeze(output, [1]) for output in tf.split(1, self.num_steps, outputs)]
             # First calculate a concatenation of encoder outputs to put attention on.
             top_states = [tf.reshape(e, [-1, 1, cell.output_size])
                 for e in split_outputs]
             attention_states = tf.concat(1, top_states)
 
-        mask = tf.sign(tf.to_float(self.targets), name='mask')
-        split_weights = [tf.squeeze(weight, [1]) for weight in tf.split(1, self.num_steps, mask)]
-        split_targets = [tf.squeeze(target, [1]) for target in tf.split(1, self.num_steps, self.targets)]
+        with tf.variable_scope("split_tensors"):
+            mask = tf.sign(tf.to_float(self.targets), name='mask')
+            split_weights = [tf.squeeze(weight, [1]) for weight in tf.split(1, self.num_steps, mask)]
+            split_targets = [tf.squeeze(target, [1]) for target in tf.split(1, self.num_steps, self.targets)]
 
-        self.dec_inputs = [tf.ones_like(split_targets[0], dtype=tf.int32, name="GO")] + split_targets[:-1]
+            self.dec_inputs = [tf.ones_like(split_targets[0], dtype=tf.int32, name="<GO>")] + split_targets[:-1]
 
-        def seq2seq_f(forward_only):
+        def seq2seq_decoder(forward_only):
             outcell = cell
             return seq2seq.embedding_attention_decoder(self.dec_inputs, self.encoder_states, attention_states,
                                                        outcell, self.vocab_size, num_units,
                                                        output_projection=output_projection, feed_previous=forward_only)
 
-        outputs, states, self.atten_distributions = seq2seq_f(forward_only)
+        with tf.variable_scope('decoder'):
+            outputs, states, self.atten_distributions = seq2seq_decoder(forward_only)
 
-        self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in outputs] # for output
+        with tf.variable_scope('output_indices'):
+            self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in outputs] # for output
 
-        self.loss = tf.nn.seq2seq.sequence_loss(outputs, split_targets, split_weights,
-                                                softmax_loss_function=softmax_loss_function)
-        self.train_op = tf.train.AdamOptimizer(name='adam').minimize(self.loss)
+        with tf.variable_scope("loss"):
+            self.loss = tf.nn.seq2seq.sequence_loss(outputs, split_targets, split_weights,
+                                                    softmax_loss_function=softmax_loss_function)
 
-        self.saver = tf.train.Saver()
+        with tf.variable_scope('Optimizer'):
+            self.train_op = tf.train.AdamOptimizer(name='adam').minimize(self.loss)
 
-        loss_summary = tf.scalar_summary('loss', self.loss)
-        self.merged_summaries = tf.merge_all_summaries()
+        with tf.variable_scope("Saver"):
+            self.saver = tf.train.Saver()
+
+        with tf.variable_scope('summaries'):
+            loss_summary = tf.scalar_summary('loss', self.loss)
+            self.merged_summaries = tf.merge_all_summaries()
 
     def step(self, session, x, y, x_early_stops, forward_only=False):
         feed_dict = {self.inputs: np.expand_dims(x, 2)}
         feed_dict.update({self.targets: y})
         feed_dict.update({self.early_stops: x_early_stops})
-        #print "feed_dict: ", feed_dict
 
         if forward_only:
             _, loss, indices, atten_distributions = session.run([tf.no_op(), self.loss, self.output_indices,
@@ -113,9 +120,7 @@ class Dialogue(object):
 
 
 if __name__ == '__main__':
-
     config = Config()
-
     with tf.Session() as session:
         with tf.variable_scope('Model', reuse=None):
             dialogue = Dialogue(config, forward_only=False)
@@ -127,9 +132,9 @@ if __name__ == '__main__':
         tf.initialize_all_variables().run()
 
         for epoch in xrange(500):
-            r.batch_size = config.batch_size
             print "Epoch: {}".format(epoch+1) 
             loss_list = []
+            r.batch_size = config.batch_size
             s = time.time()
             for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
                 loss = dialogue.step(session, x, y, x_early_steps)
@@ -137,19 +142,18 @@ if __name__ == '__main__':
 
                 if step % 100 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
-                    dialogue.saver.save(session, 'logdir_dfd2/train/dialogue.ckpt')
+                    dialogue.saver.save(session, 'logdir_dfd2/train/dialogue.ckpt') # save the model periodically
+
             print "Mean loss: {:.4f}".format(np.mean(loss_list))
             print "Time Elapsed: {:.4f}".format(time.time() - s)
+
             r.batch_size = 100
-            
             for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
                 loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
 
                 assert x.shape[0] == len(indices[0])
-
                 indices = np.array(indices) #shape: (T, B)
                 for i in range(indices.shape[1]):
-                #for i in range(indices.shape[1]):
                     print "************"
                     print "post     : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[i])))
                     print "reference: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[i])))
