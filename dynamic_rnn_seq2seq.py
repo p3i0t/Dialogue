@@ -4,8 +4,6 @@ import reader
 import seq2seq
 import time
 
-import debug_bi_dy_rnn
-
 class Config(object):
     init_scale = 0.05
     learning_rate = 1.0
@@ -71,7 +69,7 @@ class Dialogue(object):
             encoder_cell = tf.nn.rnn_cell.EmbeddingWrapper(cell, embedding_classes=self.vocab_size,
                                                            embedding_size=self.num_units)
             if bidirectional:
-                outputs, self.encoder_states = debug_bi_dy_rnn.bidirectional_dynamic_rnn(encoder_cell, encoder_cell, self.inputs,
+                outputs, self.encoder_states = tf.nn.bidirectional_dynamic_rnn(encoder_cell, encoder_cell, self.inputs,
                 #outputs, self.encoder_states = tf.nn.bidirectional_dynamic_rnn(encoder_cell, encoder_cell, self.inputs,
                                                             sequence_length=self.early_stops, dtype=tf.float32,
                                                                                time_major=False, scope='bi_rnn')
@@ -80,11 +78,11 @@ class Dialogue(object):
                                                              dtype=tf.float32, time_major=False)
 
         with tf.variable_scope("atten_states"):
-            if bidirectional and isinstance(outputs, tuple) and isinstance(self.encoder_states, tuple):
+            if bidirectional:# and isinstance(outputs, tuple) and isinstance(self.encoder_states, tuple):
                 outputs = tf.concat(2, [outputs[0], outputs[1]])
-                self.encoder_states = (tf.concat(1, [self.encoder_states[0][0], self.encoder_states[1][0]]),)
+                self.encoder_states = tf.concat(1, [self.encoder_states[0], self.encoder_states[1]])
                 assert outputs.get_shape()[2] == 2 * self.num_units
-                assert isinstance(self.encoder_states, tuple) and len(self.encoder_states) == 1
+                #assert isinstance(self.encoder_states, tuple) and len(self.encoder_states) == 1
 
             # Split the outputs to list of 2D Tensors with length num_steps with shape[batch_size, embedding_size]
             split_outputs = [tf.squeeze(output, [1]) for output in tf.split(1, self.num_steps, outputs)]
@@ -121,7 +119,7 @@ class Dialogue(object):
 
         with tf.variable_scope('output_indices'):
             #output_projection first
-            projected_outputs = [tf.matmul(output, output_projection[0])+output_projection[1] for output in outputs]
+            projected_outputs = [tf.matmul(output, output_projection[0]) + output_projection[1] for output in outputs]
             self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in projected_outputs]
 
         with tf.variable_scope("loss"):
@@ -174,7 +172,7 @@ if __name__ == '__main__':
                 loss = dialogue.step(session, x, y, x_early_steps)
                 loss_list.append(loss)
 
-                if step % 100 == 1:
+                if step % 1000 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
                     dialogue.saver.save(session, 'logdir/train/dialogue.ckpt') # save the model periodically
 
