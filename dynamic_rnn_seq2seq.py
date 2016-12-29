@@ -5,6 +5,7 @@ import seq2seq
 import time
 
 import debug_bi_dy_rnn
+import rnn_cell_impl
 
 class Config(object):
     init_scale = 0.05
@@ -61,6 +62,7 @@ class Dialogue(object):
 
         with tf.variable_scope("RNN_cells"):
             cell = tf.nn.rnn_cell.GRUCell(self.num_units)
+            #cell = rnn_cell_impl.SoftmaxWrapper(cell, w, b)
             cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers)
 
             if bidirectional:

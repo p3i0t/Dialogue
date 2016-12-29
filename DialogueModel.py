@@ -4,7 +4,7 @@ import reader
 import time
 
 import seq2seq
-from rnn_cell_impl import _linear as linear
+#from rnn_cell_impl import _linear as linear
 
 
 class Config(object):
@@ -20,6 +20,27 @@ class Config(object):
     momentum_decay = lr_decay # same for lr_decay
     batch_size = 128 
     vocab_size = 40000 + 4 
+
+def weight_variable(shape):
+    initial = tf.truncated_normal(shape, stddev=0.001)
+    return tf.Variable(initial)
+
+
+def bias_variable(shape):
+    initial = tf.constant(0.0, shape=shape) # should be a float
+    return tf.Variable(initial)
+
+# define a dense (fully-connected) linear layer
+def linear(shape):
+    '''
+    return a function takes the placeholder x as input
+    '''
+    def transform(x):
+        W = weight_variable(shape)
+        b = bias_variable([shape[1]])
+        return tf.matmul(x, W) + b
+    return transform
+
 
 
 class Dialogue(object):
@@ -162,7 +183,7 @@ class Dialogue(object):
         else:
             _, loss, summaries = session.run([self.train_op, self.loss, self.merged_summaries], feed_dict)
             summary_writer.add_summary(summaries)
-                    return loss
+            return loss
 
 
 def main():

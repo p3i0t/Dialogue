@@ -542,6 +542,51 @@ class OutputProjectionWrapper(RNNCell):
     return projected, res_state
 
 
+class SoftmaxWrapper(RNNCell):
+  """Operator adding an output projection to the given cell with explicit output projection variables.
+
+  Note: in many cases it may be more efficient to not use this wrapper,
+  but instead concatenate the whole sequence of your outputs in time,
+  do the projection on this batch-concatenated sequence, then split it
+  if needed or directly feed into a softmax.
+  """
+
+  def __init__(self, cell, softmax_w, softmax_b):
+    """Create a cell with output projection.
+
+    Args:
+      cell: an RNNCell, a projection to output_size is added to it.
+      softmax_w: A 2D Tensor, [state_size, output_size].
+      softmax_b: A 1D Tensor, [output_size].
+
+    Raises:
+      TypeError: if cell is not an RNNCell.
+      ValueError: if output_size is not positive.
+    """
+    #if not isinstance(cell, RNNCell):
+    #  raise TypeError("The parameter cell is not RNNCell.")
+    self._cell = cell
+    self._softmax_w = softmax_w
+    self._softmax_b = softmax_b
+
+  @property
+  def state_size(self):
+    return self._cell.state_size
+
+  @property
+  def output_size(self):
+    return self._softmax_b.get_shape()[0]
+
+  def __call__(self, inputs, state, scope=None):
+    """Run the cell and softmax output projection on inputs, starting from state."""
+    output, res_state = self._cell(inputs, state)
+    # Default scope: "SoftmaxWrapper"
+    with vs.variable_scope(scope or "softmax_wrapper"):
+      projected = math_ops.matmul(output, self._softmax_w) + self._softmax_b
+      #projected = _linear(output, self._output_size, True, scope=scope)
+    return projected, res_state
+
+
 class InputProjectionWrapper(RNNCell):
   """Operator adding an input projection to the given cell.
 

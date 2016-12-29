@@ -76,6 +76,7 @@ import rnn_cell_impl
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.util import nest
 
+import tensorflow as tf
 # TODO(ebrevdo): Remove once _linear is fully deprecated.
 linear = rnn_cell_impl._linear  # pylint: disable=protected-access
 
@@ -106,6 +107,80 @@ def _extract_argmax_and_embed(embedding, output_projection=None,
       emb_prev = array_ops.stop_gradient(emb_prev)
     return emb_prev
   return loop_function
+
+
+#default batch_size is 1
+def _extract_beam_search_and_embed(embedding, beam_size, num_symbols,
+                                   embedding_size, output_projection=None,
+                                   update_embedding=True):
+    """Get a loop_function that extracts the previous symbol and embeds it.
+    """
+    def loop_function(prev, i, log_beam_probs, beam_path, beam_symbols):
+        """i=1 when loop_function is first called, then top_k(beam_size) are selected.
+        """
+
+        if output_projection is not None:
+            prev = nn_ops.xw_plus_b(
+                prev, output_projection[0], output_projection[1]
+            )
+
+        # shape:
+        # i=1: [1 ,num_symbols]
+        # i>1: [beam_size, num_symbols]
+        probs = tf.log(tf.nn.softmax(prev, name='prev_softmax_distribution'))
+
+        """
+        Mind the difference i==1(when the first beam_size probs are selected) and i>1 when beam_size
+        entries are selected from []
+        """
+        if i > 1:
+            """ log_beam_probs: accumulated log_prob of all beams so far. Add to softmaxed probs
+            and we get a table with all log_probs with shape of [beam_size, num_symbols].
+            shapes:
+            log_beam_probs: [beam_size, 1]
+            probs: [beam_size, num_symbols]
+            """
+            probs = tf.reshape(probs + log_beam_probs[-1], # if no problems
+                               [-1, beam_size * num_symbols])
+            """Given a prev word, for each single word extension, there are num_symbols
+             candidates in total;
+             In beam search, there are [beam_size x num_symbols] entries in the candidate pool,
+             beam_size of them will be selected.
+            """
+
+        """shape of probs:
+        # i=1: probs -> best_probs : [1, num_symbols] -> [1 , beam_size]
+        # i>1: probs -> best_probs : [beam_size, num_symbols] -> [1, beam_size]
+        all are row tensors, but with rank 2
+        """
+        best_probs, indices = tf.nn.top_k(probs, beam_size)
+        """
+        reshape best_probs and indices to column array,
+        squeeze the indices (with rank 2 originally) to rank 1.
+        best_probs are still in rank 2 for numpy calculations.
+        """
+        indices = tf.stop_gradient(tf.squeeze(tf.reshape(indices, [-1, 1])))
+        best_probs = tf.stop_gradient(tf.reshape(best_probs, [-1, 1]))
+
+        # i=1: easy
+        # i>1:
+        symbols = indices % num_symbols # which word in vocabulary
+        beam_parent = indices // num_symbols # which parent it follows
+
+        """ shape of beam_parent, best_probs, symbols:
+        i=1: [1, beam_size]
+        """
+        beam_path.append(beam_parent)
+        log_beam_probs.append(best_probs) # save the accumulated best k log_probs
+        beam_symbols.append(symbols)
+
+        emb_prev = embedding_ops.embedding_lookup(embedding, symbols)
+        emb_prev = tf.reshape(emb_prev, [beam_size, embedding_size])
+        # embeddings of all beam_size candidates
+        if not update_embedding:
+            emb_prev = array_ops.stop_gradient(emb_prev)
+        return emb_prev
+    return loop_function
 
 
 def rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
@@ -150,6 +225,52 @@ def rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
       if loop_function is not None:
         prev = output
   return outputs, state
+
+def beam_rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
+                     scope=None, output_projection=None, beam_size=10):
+    with variable_scope.variable_scope(scope or 'beam_rnn_decoder'):
+        state = initial_state
+        outputs = []
+        prev = None
+
+        log_beam_probs, beam_path, beam_symbols = [], [], []
+        # Tensor.get_shape()
+        state_size = int(initial_state.get_shape().with_rank(2)[1]) # get the state_size
+
+        for i, input in enumerate(decoder_inputs):
+            if loop_function is not None and prev is not None:
+                with variable_scope.variable_scope('loop_function', reuse=True):
+                    input = loop_function(prev, i, log_beam_probs, beam_path, beam_symbols)
+            if i > 0:
+                variable_scope.get_variable_scope().reuse_variables()
+
+            input_size = input.get_shape().with_rank(2)[1]
+            #print 'input shape', input.get_shape()
+            x = input # shape: [beam_size, embedding_size]
+            output, state = cell(x, state)
+
+            if loop_function is not None:
+                prev = output
+
+            # i = 0, all beam_size states are equal
+            if i == 0:
+                # copy state beam_size times, reshape to [beam_size, state_size]
+                states = []
+                for kk in range(beam_size):
+                    states.append(state)
+                state = tf.reshape(tf.concat(0, states), [-1, state_size])
+
+            """beam_rnn_decoder deals with outputs differently from rnn_decoder,
+            rnn_decoder just gets the cell output, while beam_rnn_decoder here performs
+            output_project and arg_max and get the indices of selected word.
+            Note: beam_search is only called in test mode.
+            """
+            outputs.append(tf.argmax(nn_ops.xw_plus_b(
+                output, output_projection[0], output_projection[1]), 1
+            )) # outputs shape: [beam_size,]
+
+        return outputs, state, tf.reshape(tf.concat(0, beam_path), [-1, beam_size]), \
+               tf.reshape(tf.concat(0, beam_symbols), [-1, beam_size])
 
 
 def basic_rnn_seq2seq(
@@ -673,6 +794,167 @@ def attention_decoder(decoder_inputs,
 
   return outputs, state, atten_distributions
 
+
+def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell,
+                      output_size=None, num_heads=1, loop_function=None,
+                      dtype=dtypes.float32, scope=None,
+                      initial_state_attention=False, output_projection=None, beam_size=10):
+  """RNN decoder with attention for the sequence-to-sequence model.
+  In this context "attention" means that, during decoding, the RNN can look up
+  information in the additional tensor attention_states, and it does this by
+  focusing on a few entries from the tensor. This model has proven to yield
+  especially good results in a number of sequence-to-sequence tasks. This
+  implementation is based on http://arxiv.org/abs/1412.7449 (see below for
+  details). It is recommended for complex sequence-to-sequence tasks.
+  Args:
+    decoder_inputs: A list of 2D Tensors [batch_size x input_size].
+    initial_state: 2D Tensor [batch_size x cell.state_size].
+    attention_states: 3D Tensor [batch_size x attn_length x attn_size].
+    cell: rnn_cell.RNNCell defining the cell function and size.
+    output_size: Size of the output vectors; if None, we use cell.output_size.
+    num_heads: Number of attention heads that read from attention_states.
+    loop_function: If not None, this function will be applied to i-th output
+      in order to generate i+1-th input, and decoder_inputs will be ignored,
+      except for the first element ("GO" symbol). This can be used for decoding,
+      but also for training to emulate http://arxiv.org/abs/1506.03099.
+      Signature -- loop_function(prev, i) = next
+        * prev is a 2D Tensor of shape [batch_size x output_size],
+        * i is an integer, the step number (when advanced control is needed),
+        * next is a 2D Tensor of shape [batch_size x input_size].
+    dtype: The dtype to use for the RNN initial state (default: tf.float32).
+    scope: VariableScope for the created subgraph; default: "attention_decoder".
+    initial_state_attention: If False (default), initial attentions are zero.
+      If True, initialize the attentions from the initial state and attention
+      states -- useful when we wish to resume decoding from a previously
+      stored decoder state and attention states.
+  Returns:
+    A tuple of the form (outputs, state), where:
+      outputs: A list of the same length as decoder_inputs of 2D Tensors of
+        shape [batch_size x output_size]. These represent the generated outputs.
+        Output i is computed from input i (which is either the i-th element
+        of decoder_inputs or loop_function(output {i-1}, i)) as follows.
+        First, we run the cell on a combination of the input and previous
+        attention masks:
+          cell_output, new_state = cell(linear(input, prev_attn), prev_state).
+        Then, we calculate new attention masks:
+          new_attn = softmax(V^T * tanh(W * attention_states + U * new_state))
+        and then we calculate the output:
+          output = linear(cell_output, new_attn).
+      state: The state of each decoder cell the final time-step.
+        It is a 2D Tensor of shape [batch_size x cell.state_size].
+  Raises:
+    ValueError: when num_heads is not positive, there are no inputs, shapes
+      of attention_states are not set, or input size cannot be inferred
+      from the input.
+  """
+  if not decoder_inputs:
+    raise ValueError("Must provide at least 1 input to attention decoder.")
+  if num_heads < 1:
+    raise ValueError("With less than 1 heads, use a non-attention decoder.")
+  if not attention_states.get_shape()[1:2].is_fully_defined():
+    raise ValueError("Shape[1] and [2] of attention_states must be known: %s"
+                     % attention_states.get_shape())
+  if output_size is None:
+    output_size = cell.output_size
+
+  with variable_scope.variable_scope(scope or "attention_decoder"):
+    batch_size = array_ops.shape(decoder_inputs[0])[0]  # Needed for reshaping.
+    attn_length = attention_states.get_shape()[1].value
+    attn_size = attention_states.get_shape()[2].value
+
+    # To calculate W1 * h_t we use a 1-by-1 convolution, need to reshape before.
+    hidden = array_ops.reshape(
+        attention_states, [-1, attn_length, 1, attn_size])
+    hidden_features = []
+    v = []
+    attention_vec_size = attn_size  # Size of query vectors for attention.
+    for a in xrange(num_heads):
+      k = variable_scope.get_variable("AttnW_%d" % a,
+                                      [1, 1, attn_size, attention_vec_size])
+      hidden_features.append(nn_ops.conv2d(hidden, k, [1, 1, 1, 1], "SAME"))
+      v.append(variable_scope.get_variable("AttnV_%d" % a,
+                                           [attention_vec_size]))
+
+    print "Initial_state"
+
+    state_size =  int(initial_state.get_shape().with_rank(2)[1])
+    states =[]
+    for kk in range(1):
+        states.append(initial_state)
+    state = tf.reshape(tf.concat(0, states), [-1, state_size])
+    def attention(query):
+      """Put attention masks on hidden using hidden_features and query."""
+      ds = []  # Results of attention reads will be stored here.
+      for a in xrange(num_heads):
+        with variable_scope.variable_scope("Attention_%d" % a):
+          y = linear(query, attention_vec_size, True)
+          y = array_ops.reshape(y, [-1, 1, 1, attention_vec_size])
+          # Attention mask is a softmax of v^T * tanh(...).
+          s = math_ops.reduce_sum(
+              v[a] * math_ops.tanh(hidden_features[a] + y), [2, 3])
+          a = nn_ops.softmax(s)
+          # Now calculate the attention-weighted vector d.
+          d = math_ops.reduce_sum(
+              array_ops.reshape(a, [-1, attn_length, 1, 1]) * hidden,
+              [1, 2])
+          # for c in range(ct):
+          ds.append(array_ops.reshape(d, [-1, attn_size]))
+      return ds
+
+    outputs = []
+    prev = None
+    batch_attn_size = array_ops.pack([batch_size, attn_size])
+    attns = [array_ops.zeros(batch_attn_size, dtype=dtype)
+             for _ in xrange(num_heads)]
+    for a in attns:  # Ensure the second shape of attention vectors is set.
+      a.set_shape([None, attn_size])
+
+    if initial_state_attention:
+       attns = []
+       attns.append(attention(initial_state))
+       tmp = tf.reshape(tf.concat(0, attns), [-1, attn_size])
+       attns = []
+       attns.append(tmp)
+
+    log_beam_probs, beam_path, beam_symbols = [],[],[]
+    for i, inp in enumerate(decoder_inputs):
+
+      if i > 0:
+        variable_scope.get_variable_scope().reuse_variables()
+      # If loop_function is set, we use it instead of decoder_inputs.
+      if loop_function is not None :
+        with variable_scope.variable_scope("loop_function", reuse=True):
+            if prev is not None:
+                inp = loop_function(prev, i,log_beam_probs, beam_path, beam_symbols)
+
+      input_size = inp.get_shape().with_rank(2)[1]
+      x = linear([inp] + attns, input_size, True)
+      cell_output, state = cell(x, state)
+
+      # Run the attention mechanism.
+      if i == 0 and initial_state_attention:
+        with variable_scope.variable_scope(variable_scope.get_variable_scope(),
+                                           reuse=True):
+          attns = attention(state)
+      else:
+          attns = attention(state)
+
+      with variable_scope.variable_scope("AttnOutputProjection"):
+        output = linear([cell_output] + attns, output_size, True)
+      if loop_function is not None:
+        prev = output
+      if  i ==0:
+          states =[]
+          for kk in range(beam_size):
+                states.append(state)
+          state = tf.reshape(tf.concat(0, states), [-1, state_size])
+          with variable_scope.variable_scope(variable_scope.get_variable_scope(), reuse=True):
+                attns = attention(state)
+
+      outputs.append(tf.argmax(nn_ops.xw_plus_b(
+          output, output_projection[0], output_projection[1]), dimension=1))
+
+  return outputs, state, tf.reshape(tf.concat(0, beam_path),[-1,beam_size]), tf.reshape(tf.concat(0, beam_symbols),[-1,beam_size])
 
 def embedding_attention_decoder(decoder_inputs,
                                 initial_state,

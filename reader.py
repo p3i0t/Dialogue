@@ -20,6 +20,9 @@ class Reader(object):
                     '<GO>': 1, '<UNK>': 2, '<EOS>': 3}
         self.control_id_to_word = dict(zip(range(4), ['<PAD>', '<GO>', '<UNK>', '<EOS>']))
 
+        assert len(self.word_to_id.keys()) == len(self.id_to_word.keys())
+        print "Total size of the vocab(including control symbols): {}".format(len(self.id_to_word.keys()))
+
     def read_words(self, path):
         words = []
         for line in open(path):
@@ -33,7 +36,10 @@ class Reader(object):
             d = np.load('vocab.npz')
             self.word_to_id = d['word_to_id'].item() #call item() to transform numpy.ndarray() to dict
             self.id_to_word = d['id_to_word'].item()
-            return
+            if len(self.id_to_word.keys()) == self.vocab_size + 4:
+                return
+            else:
+                print "vocab.npz data outdated! rebuilding vocab ..."
 
         vocabs = []
         vocabs.extend(self.read_words(self.post))
@@ -119,7 +125,7 @@ class Reader(object):
 
         num_batches = data_len / self.batch_size
         shuffle = np.random.permutation(num_batches)
-        for ind in range(num_batches):
+        for ind in range(num_batches/10):
             i = shuffle[ind]
             x = X[i*self.batch_size: (i+1)*self.batch_size]
             x_early_stops = X_early_stops[i*self.batch_size: (i+1)*self.batch_size]
@@ -134,9 +140,15 @@ class Reader(object):
         posts_lens = []
         for step, line in enumerate(open(self.post)):
             tokens, l = self.tokenize_sentence(line)
-            assert np.sum(np.array(tokens)!=0) == l
+            assert np.sum(np.array(tokens) != 0) == l
 
         print "Len tests passed!"
+
+        inds =  self.id_to_word.keys()
+        print 'len of inds', len(inds)
+        print 'max of inds', np.max(inds)
+        print 'min of inds', np.min(inds)
+
             #posts_lens.append(l)
             #posts.append(tokens)
         exit(0)
