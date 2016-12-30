@@ -3,8 +3,8 @@ import numpy as np
 import reader
 import time
 
+import my_seq2seq
 import seq2seq
-
 
 class Config(object):
     init_scale = 0.05
@@ -68,11 +68,22 @@ class Dialogue(object):
 
             softmax_loss_function = sampled_loss
 
-        outputs, states = tf.nn.seq2seq.embedding_attention_seq2seq(self.inputs, self.targets, cell, self.vocab_size, self.vocab_size,
-                                                  num_units, output_projection=output_projection, feed_previous=forward_only)
+        #seq2seq.embedding_attention_seq2seq(self.inputs, self.targets, cell, self.vocab_size, self.vocab_size,
+         #                                   num_units, output_projection=output_projection, feed_previous=forward_only)
 
-        #print '******', states
-        self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in outputs] # for output
+
+        outputs, states, beam_path, beam_symbols = my_seq2seq.embedding_attention_seq2seq(self.inputs, self.targets, cell, self.vocab_size, self.vocab_size,
+                                                  num_units, output_projection=output_projection, feed_previous=forward_only,
+                                                    beam_search=True, beam_size=10)
+        self.outputs = outputs
+        print('outputs: ', len(outputs), outputs)
+        print("outputs: ", outputs)
+        print('beam symbols: ', beam_symbols)
+        print("beam path: ", beam_path)
+        print("beam symbols: ", beam_symbols)
+
+        outputs_ = [tf.matmul(output, w) + b for output in outputs]
+        self.output_indices = [tf.squeeze(tf.argmax(output, 1)) for output in outputs_] # for output
 
         with tf.variable_scope("Loss"):
             # a Scalar
@@ -100,6 +111,8 @@ class Dialogue(object):
             _, loss, indices, weights = session.run([tf.no_op(), self.loss, self.output_indices, self.weights], feed_dict)
             return loss, indices, weights
         else:
+            outputs = session.run([self.outputs], feed_dict)
+            print "wocao============:", outputs
             _, loss, summaries, weights = session.run([self.train_op, self.loss, self.merged_summaries, self.weights], feed_dict)
             #summary_writer.add_summary(summaries)
             return loss, weights
@@ -116,12 +129,12 @@ def main():
         with tf.variable_scope("Model", reuse=True):
             test_dialogue = Dialogue(config, variational=False, forward_only=True)
 
-        exit(0)
         tf.global_variables_initializer().run()
 
         for epoch in xrange(10):
             r.batch_size=128
             for step, (x, y, x_early_steps, y_early_steps) in enumerate(r.iterator()):
+                print ("************ x: ", x.shape)
                 loss, weights = dialogue.step(session, x, y, x_early_steps)
                 if step % 10 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)

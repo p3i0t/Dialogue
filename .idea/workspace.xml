@@ -2,13 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b9ddf89b-94e4-4090-905d-78a5a675b197" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/vocab.npz" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DialogueModel.py" afterPath="$PROJECT_DIR$/DialogueModel.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/dynamic_rnn_seq2seq.py" afterPath="$PROJECT_DIR$/dynamic_rnn_seq2seq.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/my_seq2seq.py" afterPath="$PROJECT_DIR$/my_seq2seq.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/native_seq2seq.py" afterPath="$PROJECT_DIR$/native_seq2seq.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/reader.py" afterPath="$PROJECT_DIR$/reader.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/rnn_cell_impl.py" afterPath="$PROJECT_DIR$/rnn_cell_impl.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/seq2seq.py" afterPath="$PROJECT_DIR$/seq2seq.py" />
     </list>
     <ignored path="OpenDialogue.iws" />
@@ -54,8 +52,8 @@
       <file leaf-file-name="native_seq2seq.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/native_seq2seq.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="105">
-              <caret line="12" column="21" lean-forward="false" selection-start-line="12" selection-start-column="21" selection-end-line="12" selection-end-column="21" />
+            <state relative-caret-position="60">
+              <caret line="79" column="30" lean-forward="true" selection-start-line="79" selection-start-column="30" selection-end-line="79" selection-end-column="30" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
               </folding>
@@ -63,11 +61,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="dynamic_rnn_seq2seq.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="dynamic_rnn_seq2seq.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/dynamic_rnn_seq2seq.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-319">
-              <caret line="74" column="29" lean-forward="false" selection-start-line="74" selection-start-column="29" selection-end-line="74" selection-end-column="29" />
+            <state relative-caret-position="165">
+              <caret line="195" column="30" lean-forward="true" selection-start-line="195" selection-start-column="30" selection-end-line="195" selection-end-column="30" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
               </folding>
@@ -78,8 +76,8 @@
       <file leaf-file-name="rnn_cell_impl.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/rnn_cell_impl.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="59">
-              <caret line="557" column="44" lean-forward="false" selection-start-line="557" selection-start-column="44" selection-end-line="557" selection-end-column="44" />
+            <state relative-caret-position="179">
+              <caret line="565" column="38" lean-forward="true" selection-start-line="565" selection-start-column="38" selection-end-line="565" selection-end-column="38" />
               <folding>
                 <element signature="e#728#766#0" expanded="true" />
               </folding>
@@ -90,13 +88,25 @@
       <file leaf-file-name="VAE_posts.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/VAE_posts.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="790">
-              <caret line="143" column="38" lean-forward="false" selection-start-line="143" selection-start-column="38" selection-end-line="143" selection-end-column="38" />
+            <state relative-caret-position="235">
+              <caret line="291" column="58" lean-forward="true" selection-start-line="291" selection-start-column="26" selection-end-line="291" selection-end-column="58" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
                 <element signature="e#3278#3734#0" expanded="false" />
                 <element signature="e#3797#4175#0" expanded="false" />
                 <element signature="e#4278#5555#0" expanded="false" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="seq2seq.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/seq2seq.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="196">
+              <caret line="877" column="26" lean-forward="true" selection-start-line="877" selection-start-column="26" selection-end-line="877" selection-end-column="26" />
+              <folding>
+                <element signature="e#2694#2732#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -114,26 +124,24 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="seq2seq.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/seq2seq.py">
+      <file leaf-file-name="reader.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/reader.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="321">
-              <caret line="850" column="53" lean-forward="false" selection-start-line="850" selection-start-column="53" selection-end-line="850" selection-end-column="53" />
+            <state relative-caret-position="1755">
+              <caret line="120" column="0" lean-forward="true" selection-start-line="120" selection-start-column="0" selection-end-line="120" selection-end-column="0" />
               <folding>
-                <element signature="e#2694#2732#0" expanded="true" />
+                <element signature="e#0#18#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="reader.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/reader.py">
+      <file leaf-file-name="my_seq2seq.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/my_seq2seq.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1860">
-              <caret line="126" column="52" lean-forward="false" selection-start-line="126" selection-start-column="52" selection-end-line="126" selection-end-column="52" />
-              <folding>
-                <element signature="e#0#18#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="301">
+              <caret line="687" column="90" lean-forward="false" selection-start-line="687" selection-start-column="90" selection-end-line="687" selection-end-column="90" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -154,23 +162,24 @@
       <list>
         <option value="$PROJECT_DIR$/interact.py" />
         <option value="$PROJECT_DIR$/reader_.py" />
-        <option value="$PROJECT_DIR$/native_seq2seq.py" />
         <option value="$PROJECT_DIR$/debug_bi_dy_rnn.py" />
         <option value="$PROJECT_DIR$/DialogueModel.py" />
         <option value="$PROJECT_DIR$/visual.py" />
-        <option value="$PROJECT_DIR$/reader.py" />
         <option value="$PROJECT_DIR$/VAE_posts.py" />
         <option value="$PROJECT_DIR$/rnn_cell_impl.py" />
-        <option value="$PROJECT_DIR$/dynamic_rnn_seq2seq.py" />
+        <option value="$PROJECT_DIR$/native_seq2seq.py" />
         <option value="$PROJECT_DIR$/seq2seq.py" />
+        <option value="$PROJECT_DIR$/my_seq2seq.py" />
+        <option value="$PROJECT_DIR$/reader.py" />
+        <option value="$PROJECT_DIR$/dynamic_rnn_seq2seq.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="1548" />
-    <option name="y" value="23" />
-    <option name="width" value="1526" />
-    <option name="height" value="1027" />
+    <option name="x" value="1561" />
+    <option name="y" value="40" />
+    <option name="width" value="1400" />
+    <option name="height" value="877" />
   </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
     <entry key="Project Default">
@@ -269,23 +278,6 @@
       <option name="SHOW_COMMAND_LINE" value="false" />
       <method />
     </configuration>
-    <configuration default="false" name="reader" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="OpenDialogue" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/reader.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <method />
-    </configuration>
     <configuration default="false" name="VAE_posts" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -303,23 +295,6 @@
       <option name="SHOW_COMMAND_LINE" value="false" />
       <method />
     </configuration>
-    <configuration default="false" name="DialogueModel" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="OpenDialogue" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/DialogueModel.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <method />
-    </configuration>
     <configuration default="false" name="visual" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -333,6 +308,40 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="OpenDialogue" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/visual.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <method />
+    </configuration>
+    <configuration default="false" name="native_seq2seq" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="OpenDialogue" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/native_seq2seq.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <method />
+    </configuration>
+    <configuration default="false" name="my_seq2seq" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="OpenDialogue" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/my_seq2seq.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <method />
@@ -473,18 +482,18 @@
     </configuration>
     <list size="5">
       <item index="0" class="java.lang.String" itemvalue="Python.dynamic_rnn_seq2seq" />
-      <item index="1" class="java.lang.String" itemvalue="Python.reader" />
-      <item index="2" class="java.lang.String" itemvalue="Python.VAE_posts" />
-      <item index="3" class="java.lang.String" itemvalue="Python.DialogueModel" />
-      <item index="4" class="java.lang.String" itemvalue="Python.visual" />
+      <item index="1" class="java.lang.String" itemvalue="Python.VAE_posts" />
+      <item index="2" class="java.lang.String" itemvalue="Python.visual" />
+      <item index="3" class="java.lang.String" itemvalue="Python.native_seq2seq" />
+      <item index="4" class="java.lang.String" itemvalue="Python.my_seq2seq" />
     </list>
     <recent_temporary>
       <list size="5">
         <item index="0" class="java.lang.String" itemvalue="Python.dynamic_rnn_seq2seq" />
-        <item index="1" class="java.lang.String" itemvalue="Python.VAE_posts" />
-        <item index="2" class="java.lang.String" itemvalue="Python.visual" />
-        <item index="3" class="java.lang.String" itemvalue="Python.DialogueModel" />
-        <item index="4" class="java.lang.String" itemvalue="Python.reader" />
+        <item index="1" class="java.lang.String" itemvalue="Python.my_seq2seq" />
+        <item index="2" class="java.lang.String" itemvalue="Python.native_seq2seq" />
+        <item index="3" class="java.lang.String" itemvalue="Python.VAE_posts" />
+        <item index="4" class="java.lang.String" itemvalue="Python.visual" />
       </list>
     </recent_temporary>
   </component>
@@ -541,17 +550,18 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="1548" y="23" width="1526" height="1027" extended-state="0" />
-    <editor active="true" />
+    <frame x="1561" y="40" width="1400" height="877" extended-state="0" />
+    <editor active="false" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.12624584" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2480058" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32673267" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32806325" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32673267" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3839384" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.43784377" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.65217394" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4313253" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.26512653" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -561,7 +571,6 @@
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32806325" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
     </layout>
     <layout-to-restore>
@@ -627,7 +636,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="python-line">
           <url>file://$PROJECT_DIR$/dynamic_rnn_seq2seq.py</url>
-          <line>31</line>
+          <line>33</line>
         </line-breakpoint>
       </breakpoints>
       <option name="time" value="1" />
@@ -635,16 +644,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/DialogueModel.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2700">
-          <caret line="185" column="12" lean-forward="false" selection-start-line="185" selection-start-column="12" selection-end-line="185" selection-end-column="12" />
-          <folding>
-            <element signature="e#0#23#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/native_seq2seq.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="105">
@@ -994,6 +993,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="959" column="36" lean-forward="false" selection-start-line="959" selection-start-column="36" selection-end-line="959" selection-end-column="36" />
+          <folding />
         </state>
       </provider>
     </entry>
@@ -1001,16 +1001,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="15">
           <caret line="658" column="18" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="1334" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/native_seq2seq.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="12" column="21" lean-forward="false" selection-start-line="12" selection-start-column="21" selection-end-line="12" selection-end-column="21" />
-          <folding>
-            <element signature="e#0#23#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1054,16 +1044,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/reader.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1860">
-          <caret line="126" column="52" lean-forward="false" selection-start-line="126" selection-start-column="52" selection-end-line="126" selection-end-column="52" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/rnn_cell.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -1082,10 +1062,58 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/rnn_cell_impl.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="179">
+          <caret line="565" column="38" lean-forward="true" selection-start-line="565" selection-start-column="38" selection-end-line="565" selection-end-column="38" />
+          <folding>
+            <element signature="e#728#766#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/seq2seq.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="196">
+          <caret line="877" column="26" lean-forward="true" selection-start-line="877" selection-start-column="26" selection-end-line="877" selection-end-column="26" />
+          <folding>
+            <element signature="e#2694#2732#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/native_seq2seq.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="60">
+          <caret line="79" column="30" lean-forward="true" selection-start-line="79" selection-start-column="30" selection-end-line="79" selection-end-column="30" />
+          <folding>
+            <element signature="e#0#23#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/my_seq2seq.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="301">
+          <caret line="687" column="90" lean-forward="false" selection-start-line="687" selection-start-column="90" selection-end-line="687" selection-end-column="90" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/reader.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1755">
+          <caret line="120" column="0" lean-forward="true" selection-start-line="120" selection-start-column="0" selection-end-line="120" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/VAE_posts.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="790">
-          <caret line="143" column="38" lean-forward="false" selection-start-line="143" selection-start-column="38" selection-end-line="143" selection-end-column="38" />
+        <state relative-caret-position="235">
+          <caret line="291" column="58" lean-forward="true" selection-start-line="291" selection-start-column="26" selection-end-line="291" selection-end-column="58" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
             <element signature="e#3278#3734#0" expanded="false" />
@@ -1095,32 +1123,12 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/rnn_cell_impl.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="59">
-          <caret line="557" column="44" lean-forward="false" selection-start-line="557" selection-start-column="44" selection-end-line="557" selection-end-column="44" />
-          <folding>
-            <element signature="e#728#766#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/dynamic_rnn_seq2seq.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-319">
-          <caret line="74" column="29" lean-forward="false" selection-start-line="74" selection-start-column="29" selection-end-line="74" selection-end-column="29" />
+        <state relative-caret-position="165">
+          <caret line="195" column="30" lean-forward="true" selection-start-line="195" selection-start-column="30" selection-end-line="195" selection-end-column="30" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/seq2seq.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="321">
-          <caret line="850" column="53" lean-forward="false" selection-start-line="850" selection-start-column="53" selection-end-line="850" selection-end-column="53" />
-          <folding>
-            <element signature="e#2694#2732#0" expanded="true" />
           </folding>
         </state>
       </provider>

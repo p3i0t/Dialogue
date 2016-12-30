@@ -875,7 +875,7 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
       v.append(variable_scope.get_variable("AttnV_%d" % a,
                                            [attention_vec_size]))
 
-    print "Initial_state"
+    #print "Initial_state"
 
     state_size =  int(initial_state.get_shape().with_rank(2)[1])
     states =[]

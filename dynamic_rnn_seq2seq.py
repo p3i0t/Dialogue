@@ -4,12 +4,11 @@ import reader
 import seq2seq
 import time
 
-<<<<<<< HEAD
 import debug_bi_dy_rnn
 import rnn_cell_impl
+import my_seq2seq
 
-=======
->>>>>>> ee23b7f66faa66340834d91706a4033fe1da01b5
+
 class Config(object):
     init_scale = 0.05
     learning_rate = 1.0
@@ -21,8 +20,8 @@ class Config(object):
     keep_prob = 0.5
     lr_decay = 0.9
     momentum_decay = lr_decay # same for lr_decay
-    batch_size = 128
-    vocab_size = 40000 + 4
+    batch_size = 64
+    vocab_size = 20000 + 4
 
 
 class Dialogue(object):
@@ -84,10 +83,14 @@ class Dialogue(object):
                 outputs, self.encoder_states = tf.nn.dynamic_rnn(encoder_cell, self.inputs, self.early_stops,
                                                              dtype=tf.float32, time_major=False)
 
+        #print 'encoder_state: ', self.encoder_states
         with tf.variable_scope("atten_states"):
             if bidirectional:# and isinstance(outputs, tuple) and isinstance(self.encoder_states, tuple):
+
                 outputs = tf.concat(2, [outputs[0], outputs[1]])
-                self.encoder_states = tf.concat(1, [self.encoder_states[0], self.encoder_states[1]])
+                self.encoder_states = tf.concat(1, [self.encoder_states[0][0], self.encoder_states[1][0]])
+                self.encoder_states = (self.encoder_states,)
+                #print 'encoder_state: ', self.encoder_states
                 assert outputs.get_shape()[2] == 2 * self.num_units
                 #assert isinstance(self.encoder_states, tuple) and len(self.encoder_states) == 1
 
@@ -116,13 +119,25 @@ class Dialogue(object):
             else:
                 outcell = cell
                 num_units = self.num_units
+            beam_search = forward_only
+            beam_size = 10
 
-            return seq2seq.embedding_attention_decoder(self.dec_inputs, self.encoder_states, attention_states,
+            return my_seq2seq.embedding_attention_decoder(self.dec_inputs, self.encoder_states, attention_states,
                                                        outcell, self.vocab_size, num_units,
-                                                       output_projection=output_projection, feed_previous=forward_only)
+                                                       output_projection=output_projection, feed_previous=forward_only,
+                                                          beam_search=beam_search, beam_size=beam_size)
 
+        #print 'encoder_state: ', self.encoder_states
         with tf.variable_scope('decoder'):
-            outputs, states, self.atten_distributions = seq2seq_decoder(forward_only)
+            if forward_only:
+                outputs, states, self.path, self.symbols = seq2seq_decoder(forward_only)
+                return
+                #outputs, states, self.atten_distributions, path, symbols = seq2seq_decoder(forward_only)
+            else:
+                outputs, states = seq2seq_decoder(forward_only)
+
+            print 'outputs: ', outputs
+            print 'states: ', states
 
         with tf.variable_scope('output_indices'):
             #output_projection first
@@ -149,9 +164,8 @@ class Dialogue(object):
         feed_dict.update({self.early_stops: x_early_stops})
 
         if forward_only:
-            _, loss, indices, atten_distributions = session.run([tf.no_op(), self.loss, self.output_indices,
-                                                                 self.atten_distributions], feed_dict)
-            return loss, indices, atten_distributions
+            path, symbols = session.run([self.path, self.symbols], feed_dict)
+            return path, symbols
         else:
             _, loss = session.run([self.train_op, self.loss], feed_dict)
             return loss
@@ -166,7 +180,7 @@ if __name__ == '__main__':
         with tf.variable_scope('Model', reuse=True):
             evaluate_dialogue = Dialogue(config, forward_only=True, bidirectional=bidirectional)
 
-        r = reader.Reader(num_steps=config.num_steps, batch_size=config.batch_size)
+        r = reader.Reader(vocab_size=config.vocab_size - 4, num_steps=config.num_steps, batch_size=config.batch_size)
 
         tf.initialize_all_variables().run()
 
@@ -186,16 +200,28 @@ if __name__ == '__main__':
             print "Mean loss: {:.4f}".format(np.mean(loss_list))
             print "Time Elapsed: {:.4f}".format(time.time() - s)
 
-            r.batch_size = 100
+            r.batch_size = 1
             for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
-                loss, indices, atten_disbributions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
+                path, symbols = evaluate_dialogue.step(session, x, y, x_early_steps, True)
 
+                print "************"
+                print "post     : ", ' '.join(
+                    map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[0])))
+                print path
+                print symbols #[-1, beam_size]
+                for i in xrange(symbols.shape[0]):
+                    print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind],
+                                                      filter(lambda ind: ind != r.control_word_to_id['<PAD>'],
+                                                             symbols[:, i])))
+                '''
                 assert x.shape[0] == len(indices[0])
                 indices = np.array(indices)#shape: (T, B)
                 for i in range(indices.shape[1]):
                     print "************"
                     print "post     : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[i])))
                     print "reference: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[i])))
-                    print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[:, i])))
-
-                break # evaluate only one batch
+                    #print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[:, i])))
+                    print "path: ", path
+                    print "symbols: ", symbols
+                    break # evaluate only one batch
+                '''

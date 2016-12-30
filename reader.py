@@ -8,9 +8,9 @@ _buckets = [(10, 8), (12, 10), (15, 12), (18, 15), (22, 18), (25, 22)]
 
 class Reader(object):
     def __init__(self, vocab_size=10000, num_steps=18, batch_size=128):
-        suffix = '_100'
-        self.post = '../stc_weibo_train_post' + suffix
-        self.response = '../stc_weibo_train_response' + suffix
+        suffix = '_1'
+        self.post = 'stc_weibo_train_post' + suffix
+        self.response = 'stc_weibo_train_response' + suffix
         self.vocab_size = vocab_size  #shared by post & response
         self.num_steps = num_steps
         self.batch_size = batch_size
@@ -125,7 +125,7 @@ class Reader(object):
 
         num_batches = data_len / self.batch_size
         shuffle = np.random.permutation(num_batches)
-        for ind in range(num_batches/10):
+        for ind in range(num_batches):
             i = shuffle[ind]
             x = X[i*self.batch_size: (i+1)*self.batch_size]
             x_early_stops = X_early_stops[i*self.batch_size: (i+1)*self.batch_size]
