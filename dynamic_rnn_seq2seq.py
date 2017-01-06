@@ -3,8 +3,9 @@ import numpy as np
 import reader
 import seq2seq
 import time
+import os
 
-import debug_bi_dy_rnn
+#import debug_bi_dy_rnn
 import rnn_cell_impl
 import my_seq2seq
 
@@ -21,7 +22,7 @@ class Config(object):
     lr_decay = 0.9
     momentum_decay = lr_decay # same for lr_decay
     batch_size = 64
-    vocab_size = 20000 + 4
+    vocab_size = 40000 + 4
 
 
 class Dialogue(object):
@@ -84,33 +85,34 @@ class Dialogue(object):
                                                              dtype=tf.float32, time_major=False)
 
         #print 'encoder_state: ', self.encoder_states
-        with tf.variable_scope("atten_states"):
-            if bidirectional:# and isinstance(outputs, tuple) and isinstance(self.encoder_states, tuple):
+	with tf.variable_scope("atten_states"):
+	    if bidirectional:# and isinstance(outputs, tuple) and isinstance(self.encoder_states, tuple):
 
-                outputs = tf.concat(2, [outputs[0], outputs[1]])
-                self.encoder_states = tf.concat(1, [self.encoder_states[0][0], self.encoder_states[1][0]])
-                self.encoder_states = (self.encoder_states,)
-                #print 'encoder_state: ', self.encoder_states
-                assert outputs.get_shape()[2] == 2 * self.num_units
-                #assert isinstance(self.encoder_states, tuple) and len(self.encoder_states) == 1
+		outputs = tf.concat(2, [outputs[0], outputs[1]])
+		self.encoder_states = tf.concat(1, [self.encoder_states[0][0], self.encoder_states[1][0]])
+		self.encoder_states = (self.encoder_states,)
+		#print 'encoder_state: ', self.encoder_states
+		assert outputs.get_shape()[2] == 2 * self.num_units
+		#assert isinstance(self.encoder_states, tuple) and len(self.encoder_states) == 1
 
-            # Split the outputs to list of 2D Tensors with length num_steps with shape[batch_size, embedding_size]
-            split_outputs = [tf.squeeze(output, [1]) for output in tf.split(1, self.num_steps, outputs)]
-            if bidirectional:
-                output_size = cell.output_size * 2
-            else:
-                output_size = cell.output_size
-            # First calculate a concatenation of encoder outputs to put attention on.
-            top_states = [tf.reshape(e, [-1, 1, output_size])
-                for e in split_outputs]
-            attention_states = tf.concat(1, top_states)
+	    # Split the outputs to list of 2D Tensors with length num_steps with shape[batch_size, embedding_size]
+	    split_outputs = [tf.squeeze(output, [1]) for output in tf.split(1, self.num_steps, outputs)]
+	    if bidirectional:
+		output_size = cell.output_size * 2
+	    else:
+		output_size = cell.output_size
+	    # First calculate a concatenation of encoder outputs to put attention on.
+	    top_states = [tf.reshape(e, [-1, 1, output_size])
+		for e in split_outputs]
+	    attention_states = tf.concat(1, top_states)
 
-        with tf.variable_scope("split_tensors"):
-            mask = tf.sign(tf.to_float(self.targets), name='mask')
-            split_weights = [tf.squeeze(weight, [1]) for weight in tf.split(1, self.num_steps, mask)]
-            split_targets = [tf.squeeze(target, [1]) for target in tf.split(1, self.num_steps, self.targets)]
+        #with tf.device('/gpu:2'):
+	with tf.variable_scope("split_tensors"):
+	    mask = tf.sign(tf.to_float(self.targets), name='mask')
+	    split_weights = [tf.squeeze(weight, [1]) for weight in tf.split(1, self.num_steps, mask)]
+	    split_targets = [tf.squeeze(target, [1]) for target in tf.split(1, self.num_steps, self.targets)]
 
-            self.dec_inputs = [tf.ones_like(split_targets[0], dtype=tf.int32, name="GO")] + split_targets[:-1]
+	    self.dec_inputs = [tf.ones_like(split_targets[0], dtype=tf.int32, name="GO")] + split_targets[:-1]
 
         def seq2seq_decoder(forward_only):
             if bidirectional:
@@ -130,14 +132,14 @@ class Dialogue(object):
         #print 'encoder_state: ', self.encoder_states
         with tf.variable_scope('decoder'):
             if forward_only:
-                outputs, states, self.path, self.symbols = seq2seq_decoder(forward_only)
+                outputs, states, self.path, self.symbols, self.attentions = seq2seq_decoder(forward_only)
                 return
                 #outputs, states, self.atten_distributions, path, symbols = seq2seq_decoder(forward_only)
             else:
                 outputs, states = seq2seq_decoder(forward_only)
 
-            print 'outputs: ', outputs
-            print 'states: ', states
+            #print 'outputs: ', outputs
+            #print 'states: ', states
 
         with tf.variable_scope('output_indices'):
             #output_projection first
@@ -164,14 +166,16 @@ class Dialogue(object):
         feed_dict.update({self.early_stops: x_early_stops})
 
         if forward_only:
-            path, symbols = session.run([self.path, self.symbols], feed_dict)
-            return path, symbols
+            path, symbols, attentions = session.run([self.path, self.symbols, self.attentions], feed_dict)
+            return path, symbols, attentions
         else:
             _, loss = session.run([self.train_op, self.loss], feed_dict)
             return loss
 
 
 if __name__ == '__main__':
+    os.environ['CUDA_VISIBLE_DEVICES']='0,1' 
+
     config = Config()
     bidirectional = True
     with tf.Session() as session:
@@ -193,7 +197,7 @@ if __name__ == '__main__':
                 loss = dialogue.step(session, x, y, x_early_steps)
                 loss_list.append(loss)
 
-                if step % 1000 == 1:
+                if step % 10 == 1:
                     print "step {:<4}, loss: {:.4}".format(step, loss)
                     dialogue.saver.save(session, 'logdir/train/dialogue.ckpt') # save the model periodically
 
@@ -201,15 +205,18 @@ if __name__ == '__main__':
             print "Time Elapsed: {:.4f}".format(time.time() - s)
 
             r.batch_size = 1
-            for ind, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
-                path, symbols = evaluate_dialogue.step(session, x, y, x_early_steps, True)
-
-                print "************"
+            for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
+                path, symbols, attentions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
+                
+                print "*"*40
                 print "post     : ", ' '.join(
                     map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[0])))
-                print path
-                print symbols #[-1, beam_size]
-                for i in xrange(symbols.shape[0]):
+                print "reference: ", ' '.join(
+                    map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[0])))
+                #print path
+                #print symbols #[-1, beam_size]
+                print "="*20
+                for i in xrange(symbols.shape[1]):
                     print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind],
                                                       filter(lambda ind: ind != r.control_word_to_id['<PAD>'],
                                                              symbols[:, i])))
@@ -225,3 +232,12 @@ if __name__ == '__main__':
                     print "symbols: ", symbols
                     break # evaluate only one batch
                 '''
+                print "Attentions: "
+                for step, attn in enumerate(attentions):
+                    print "atten of step %d: " %(step+1) , attn[0]
+                    print "argmax: ", np.argmax(attn[0]), "the word attentioned: ", r.id_to_word[x[0][np.argmax(attn[0])]]
+                #print "len of attentions: ", len(attentions)
+                #print "attention[0] shape: ", attentions[0].shape, 'sum: ', np.sum(attentions[0])
+                #print "sum of one entry: ", np.sum(attentions[0][0])
+                if step == 10:
+                    break
