@@ -618,7 +618,7 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
               [1, 2])
           # for c in range(ct):
           ds.append(array_ops.reshape(d, [-1, attn_size]))
-      return ds
+      return ds, a
 
     outputs = []
     prev = None
@@ -636,6 +636,7 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
        attns.append(tmp)
 
     log_beam_probs, beam_path, beam_symbols = [], [], []
+
     for i, inp in enumerate(decoder_inputs):
 
       if i > 0:
@@ -658,28 +659,34 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
       if i == 0 and initial_state_attention:
         with variable_scope.variable_scope(variable_scope.get_variable_scope(),
                                            reuse=True):
-          attns = attention(state)
+          attns, a = attention(state)
       else:
-          attns = attention(state)
+          attns, a = attention(state)
 
       with variable_scope.variable_scope("AttnOutputProjection"):
         output = linear([cell_output] + attns, output_size, True)
       if loop_function is not None:
         prev = output
-      if  i ==0:
+      if  i == 0:
           states =[]
           for kk in range(beam_size):
                 states.append(state)
           state = tf.reshape(tf.concat(0, states), [-1, state_size])
           with variable_scope.variable_scope(variable_scope.get_variable_scope(), reuse=True):
-                attns = attention(state)
+                attns, a = attention(state)
+      attentions.append(a)
 
       #outputs.append(tf.argmax(nn_ops.xw_plus_b(
       #    output, output_projection[0], output_projection[1]), dimension=1))
       #outputs.append(nn_ops.xw_plus_b(
       #    output, output_projection[0], output_projection[1]))
       outputs.append(output)
+<<<<<<< HEAD
   return outputs, state, tf.reshape(tf.concat(0, beam_path), [-1, beam_size]), tf.reshape(tf.concat(0, beam_symbols), [-1, beam_size])
+=======
+  return outputs, state, tf.reshape(tf.concat(0, beam_path),[-1,beam_size]), tf.reshape(tf.concat(0, beam_symbols),[-1,beam_size]), attentions
+         
+>>>>>>> 81595e23e00d6455d1540cf686c1d343ad72f148
 
 def embedding_attention_decoder(decoder_inputs, initial_state, attention_states,
                                 cell, num_symbols, embedding_size, num_heads=1,
