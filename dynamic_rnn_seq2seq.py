@@ -25,7 +25,7 @@ class Config(object):
 
 
 class Dialogue(object):
-    def __init__(self, config, forward_only=False, bidirectional=True):
+    def __init__(self, config, forward_only=False, bidirectional=True, attention=False):
         self.vocab_size = config.vocab_size
         num_layers = config.num_layers
         self.num_units = config.hidden_size
@@ -83,27 +83,28 @@ class Dialogue(object):
                 outputs, self.encoder_states = tf.nn.dynamic_rnn(encoder_cell, self.inputs, self.early_stops,
                                                              dtype=tf.float32, time_major=False)
 
+        if bidirectional:# and isinstance(outputs, tuple) and isinstance(self.encoder_states, tuple):
+            outputs = tf.concat(2, [outputs[0], outputs[1]])
+            self.encoder_states = tf.concat(1, [self.encoder_states[0][0], self.encoder_states[1][0]])
+            self.encoder_states = (self.encoder_states,)
+            #print 'encoder_state: ', self.encoder_states
+            assert outputs.get_shape()[2] == 2 * self.num_units
+            #assert isinstance(self.encoder_states, tuple) and len(self.encoder_states) == 1
+
+
         #print 'encoder_state: ', self.encoder_states
-        with tf.variable_scope("atten_states"):
-            if bidirectional:# and isinstance(outputs, tuple) and isinstance(self.encoder_states, tuple):
-
-                outputs = tf.concat(2, [outputs[0], outputs[1]])
-                self.encoder_states = tf.concat(1, [self.encoder_states[0][0], self.encoder_states[1][0]])
-                self.encoder_states = (self.encoder_states,)
-                #print 'encoder_state: ', self.encoder_states
-                assert outputs.get_shape()[2] == 2 * self.num_units
-                #assert isinstance(self.encoder_states, tuple) and len(self.encoder_states) == 1
-
-            # Split the outputs to list of 2D Tensors with length num_steps with shape[batch_size, embedding_size]
-            split_outputs = [tf.squeeze(output, [1]) for output in tf.split(1, self.num_steps, outputs)]
-            if bidirectional:
-                output_size = cell.output_size * 2
-            else:
-                output_size = cell.output_size
-            # First calculate a concatenation of encoder outputs to put attention on.
-            top_states = [tf.reshape(e, [-1, 1, output_size])
-                for e in split_outputs]
-            attention_states = tf.concat(1, top_states)
+        if attention:
+            with tf.variable_scope("atten_states"):
+                # Split the outputs to list of 2D Tensors with length num_steps with shape[batch_size, embedding_size]
+                split_outputs = [tf.squeeze(output, [1]) for output in tf.split(1, self.num_steps, outputs)]
+                if bidirectional:
+                    output_size = cell.output_size * 2
+                else:
+                    output_size = cell.output_size
+                # First calculate a concatenation of encoder outputs to put attention on.
+                top_states = [tf.reshape(e, [-1, 1, output_size])
+                    for e in split_outputs]
+                attention_states = tf.concat(1, top_states)
 
         with tf.variable_scope("split_tensors"):
             mask = tf.sign(tf.to_float(self.targets), name='mask')
@@ -122,12 +123,11 @@ class Dialogue(object):
             beam_search = forward_only
             beam_size = 10
 
-            return my_seq2seq.embedding_attention_decoder(self.dec_inputs, self.encoder_states, attention_states,
+            return my_seq2seq.embedding_rnn_decoder(self.dec_inputs, self.encoder_states, #attention_states,
                                                        outcell, self.vocab_size, num_units,
                                                        output_projection=output_projection, feed_previous=forward_only,
                                                           beam_search=beam_search, beam_size=beam_size)
 
-        #print 'encoder_state: ', self.encoder_states
         with tf.variable_scope('decoder'):
             if forward_only:
                 outputs, states, self.path, self.symbols = seq2seq_decoder(forward_only)
@@ -135,9 +135,6 @@ class Dialogue(object):
                 #outputs, states, self.atten_distributions, path, symbols = seq2seq_decoder(forward_only)
             else:
                 outputs, states = seq2seq_decoder(forward_only)
-
-            print 'outputs: ', outputs
-            print 'states: ', states
 
         with tf.variable_scope('output_indices'):
             #output_projection first
@@ -207,9 +204,9 @@ if __name__ == '__main__':
                 print "************"
                 print "post     : ", ' '.join(
                     map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[0])))
-                print path
-                print symbols #[-1, beam_size]
-                for i in xrange(symbols.shape[0]):
+                #print path
+                #print symbols #[-1, beam_size]
+                for i in xrange(symbols.shape[1]):
                     print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind],
                                                       filter(lambda ind: ind != r.control_word_to_id['<PAD>'],
                                                              symbols[:, i])))

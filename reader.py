@@ -125,7 +125,7 @@ class Reader(object):
 
         num_batches = data_len / self.batch_size
         shuffle = np.random.permutation(num_batches)
-        for ind in range(num_batches):
+        for ind in range(num_batches/10):
             i = shuffle[ind]
             x = X[i*self.batch_size: (i+1)*self.batch_size]
             x_early_stops = X_early_stops[i*self.batch_size: (i+1)*self.batch_size]

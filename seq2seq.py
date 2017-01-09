@@ -226,6 +226,7 @@ def rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
         prev = output
   return outputs, state
 
+
 def beam_rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
                      scope=None, output_projection=None, beam_size=10):
     with variable_scope.variable_scope(scope or 'beam_rnn_decoder'):
@@ -875,13 +876,12 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
       v.append(variable_scope.get_variable("AttnV_%d" % a,
                                            [attention_vec_size]))
 
-    #print "Initial_state"
-
-    state_size =  int(initial_state.get_shape().with_rank(2)[1])
+    state_size = int(initial_state.get_shape().with_rank(2)[1])
     states =[]
     for kk in range(1):
         states.append(initial_state)
     state = tf.reshape(tf.concat(0, states), [-1, state_size])
+
     def attention(query):
       """Put attention masks on hidden using hidden_features and query."""
       ds = []  # Results of attention reads will be stored here.
