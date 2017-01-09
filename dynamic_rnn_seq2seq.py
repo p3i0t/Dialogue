@@ -16,8 +16,8 @@ class Config(object):
     momentum_rate = 0.35
     max_grad_norm = 1
     num_layers = 1
-    num_steps = 18
-    hidden_size = 800
+    num_steps = 24 
+    hidden_size = 1000
     keep_prob = 0.5
     lr_decay = 0.9
     momentum_decay = lr_decay # same for lr_decay
@@ -26,7 +26,7 @@ class Config(object):
 
 
 class Dialogue(object):
-    def __init__(self, config, forward_only=False, bidirectional=True, attention=False):
+    def __init__(self, config, forward_only=False, bidirectional=True, attention=True):
         self.vocab_size = config.vocab_size
         num_layers = config.num_layers
         self.num_units = config.hidden_size
@@ -123,7 +123,7 @@ class Dialogue(object):
             beam_search = forward_only
             beam_size = 10
 
-            return my_seq2seq.embedding_rnn_decoder(self.dec_inputs, self.encoder_states, #attention_states,
+            return my_seq2seq.embedding_attention_decoder(self.dec_inputs, self.encoder_states, attention_states,
                                                        outcell, self.vocab_size, num_units,
                                                        output_projection=output_projection, feed_previous=forward_only,
                                                           beam_search=beam_search, beam_size=beam_size)
@@ -205,8 +205,8 @@ if __name__ == '__main__':
                 path, symbols, attentions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
                 
                 print("*"*40)
-                print("post     : ", ' '.join(
-                    map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[0]))))
+                print "post     : ", ' '.join(
+                    map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[0])))
 
                 print "reference: ", ' '.join(
                     map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[0])))
@@ -230,9 +230,11 @@ if __name__ == '__main__':
                     print "symbols: ", symbols
                     break # evaluate only one batch
                 '''
+
                 print "Attentions: "
-                for step, attn in enumerate(attentions):
-                    print "atten of step %d: " %(step+1) , attn[0]
+                for ind, attn in enumerate(attentions):
+                    #print "atten of step %d: " %(step+1) , attn[0]
                     print "argmax: ", np.argmax(attn[0]), "the word attentioned: ", r.id_to_word[x[0][np.argmax(attn[0])]]
+                
                 if step == 10:
                     break

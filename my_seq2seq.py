@@ -635,7 +635,7 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
        attns = []
        attns.append(tmp)
 
-    log_beam_probs, beam_path, beam_symbols = [], [], []
+    log_beam_probs, beam_path, beam_symbols, attentions = [], [], [], []
 
     for i, inp in enumerate(decoder_inputs):
 
@@ -681,12 +681,7 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
       #outputs.append(nn_ops.xw_plus_b(
       #    output, output_projection[0], output_projection[1]))
       outputs.append(output)
-<<<<<<< HEAD
-  return outputs, state, tf.reshape(tf.concat(0, beam_path), [-1, beam_size]), tf.reshape(tf.concat(0, beam_symbols), [-1, beam_size])
-=======
-  return outputs, state, tf.reshape(tf.concat(0, beam_path),[-1,beam_size]), tf.reshape(tf.concat(0, beam_symbols),[-1,beam_size]), attentions
-         
->>>>>>> 81595e23e00d6455d1540cf686c1d343ad72f148
+  return outputs, state, tf.reshape(tf.concat(0, beam_path), [-1, beam_size]), tf.reshape(tf.concat(0, beam_symbols), [-1, beam_size]), attentions
 
 def embedding_attention_decoder(decoder_inputs, initial_state, attention_states,
                                 cell, num_symbols, embedding_size, num_heads=1,
