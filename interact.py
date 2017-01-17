@@ -8,10 +8,10 @@ from DialogueModel import Dialogue, Config
 import time
 
 
-def create_model(session, forward_only):
+def create_model(session, forward_only, bidirectional):
     """Create dialogue model and initialize with parameters in session."""
     config = Config()
-    dialogue = Dialogue(config, variational=False, forward_only=forward_only)
+    dialogue = Dialogue(config, forward_only=forward_only, bidirectional=bidirectional)
     path = 'logdir/train/dialogue.ckpt'
     if os.path.exists(path):
         dialogue.saver.restore(session, 'logdir/train/dialogue.ckpt')
@@ -24,11 +24,11 @@ def train(num_epoch=100):
     with tf.Session() as sess:
         config = Config()
         with tf.variable_scope("Model", reuse=None):
-            dialogue = Dialogue(config, variational=False, forward_only=False)
+            dialogue = Dialogue(config, forward_only=False)
             train_summary_writer = tf.train.SummaryWriter('logdir/train', sess.graph)
 
         with tf.variable_scope("Model", reuse=True):
-            evaluate_dialogue = Dialogue(config, variational=False, forward_only=True)
+            evaluate_dialogue = Dialogue(config, forward_only=True)
             evaluate_summary_writer = tf.train.SummaryWriter('logdir/evaluate', sess.graph)
 
         tf.initialize_all_variables().run()
@@ -67,10 +67,63 @@ def train(num_epoch=100):
 def decode():
     with tf.Session() as sess:
         config = Config()
-        dialogue = create_model(sess, True)
-        summary_writer = tf.train.SummaryWriter('logdir/test', sess.graph)
-        r = reader.Reader(vocab_size=config.vocab_size - 4, num_steps=config.num_steps, batch_size=128)
+        bidirectional = True
+        with tf.variable_scope("Model", reuse=None):
+            dialogue = create_model(sess, False, bidirectional)
+        with tf.variable_scope("Model", reuse=True):
+            eval_dialogue = create_model(sess, True, bidirectional)
 
+        r = reader.Reader(vocab_size=config.vocab_size - 4, num_steps=config.num_steps, batch_size=config.batch_size)
+
+        tf.global_variables_initializer().run()
+
+        def ids_to_words(ids):
+            assert isinstance(ids, list)
+            words = map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], ids))
+            return ' '.join(words)
+
+        r.batch_size = 1
+        for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
+            path, symbols, entropies, attentions = eval_dialogue.step(sess, x, y, x_early_steps, True)
+
+            print("*" * 40)
+            print "post     : ", ' '.join(
+                map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[0])))
+
+            print "reference: ", ' '.join(
+                map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[0])))
+            print "=" * 20
+
+            print "=" * 60
+            print "Generations"
+            print "=" * 60
+            assert path.shape == symbols.shape
+            assert path.shape == (config.num_steps - 1, config.beam_size)
+
+            candidates = []
+            for i in xrange(config.beam_size):
+                sentence = []
+                depth = config.num_steps - 1 - 1
+                j = i
+                while True:
+                    sentence.append(symbols[depth, j])
+                    if depth > 0:
+                        j = path[depth, j]  # get the parent node current j
+                    elif depth == 0:
+                        break
+                depth -= 1
+            print "candidates {}: {}".format(i + 1, ids_to_words(sentence[::-1]))
+            candidates.append(sentence)
+
+            print "Attentions: "
+            for ind, attn in enumerate(attentions):
+                # print "atten of step %d: " %(step+1) , attn[0]
+                if ind < 4:
+                    print "argmax: ", np.argmax(attn[0]), "the word attentioned: ", r.id_to_word[x[0][np.argmax(attn[0])]]
+
+            if step == 10:
+                break
+        '''
         # Decode from standard input.
         sys.stdout.write(">> ")
         sys.stdout.flush()
@@ -82,9 +135,6 @@ def decode():
             response_tokens, _ = r.tokenize_sentence('<GO>')
             loss, indices, attention_distributions = dialogue.step(sess, summary_writer, np.array([post_tokens]),
                                          np.array([response_tokens]), np.array([l]), forward_only=True)
-            #_, indices, attention_distributions = sess.run([tf.no_op(), dialogue.output_indices, dialogue.atten_distributions],
-            #						feed_dict=feed_dict)
-            #print "attentions: ", type(attention_distributions), len(attention_distributions)
             print attention_distributions[0].shape
             m = np.vstack(attention_distributions)
             m = np.transpose(m)
@@ -98,6 +148,7 @@ def decode():
             print ">> ",
             sys.stdout.flush()
             post = sys.stdin.readline()
+        '''
 
 if __name__ == '__main__':
     train(num_epoch=100)
