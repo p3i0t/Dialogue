@@ -16,13 +16,14 @@ class Config(object):
     momentum_rate = 0.35
     max_grad_norm = 1
     num_layers = 1
-    num_steps = 24 
-    hidden_size = 1000
+    num_steps = 16 
+    hidden_size = 800
     keep_prob = 0.5
     lr_decay = 0.9
     momentum_decay = lr_decay # same for lr_decay
-    batch_size = 64
+    batch_size = 128
     vocab_size = 40000 + 4
+    beam_size = 10
 
 
 class Dialogue(object):
@@ -65,7 +66,7 @@ class Dialogue(object):
 
         with tf.variable_scope("RNN_cells"):
             cell = tf.nn.rnn_cell.GRUCell(self.num_units)
-            #cell = rnn_cell_impl.SoftmaxWrapper(cell, w, b)
+            cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=0.7)
             cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers)
 
             if bidirectional:
@@ -104,7 +105,6 @@ class Dialogue(object):
                 for e in split_outputs]
                 attention_states = tf.concat(1, top_states)
 
-            #with tf.device('/gpu:2'):
         with tf.variable_scope("split_tensors"):
             mask = tf.sign(tf.to_float(self.targets), name='mask')
             split_weights = [tf.squeeze(weight, [1]) for weight in tf.split(1, self.num_steps, mask)]
@@ -121,7 +121,7 @@ class Dialogue(object):
                 outcell = cell
                 num_units = self.num_units
             beam_search = forward_only
-            beam_size = 10
+            beam_size = config.beam_size
 
             return my_seq2seq.embedding_attention_decoder(self.dec_inputs, self.encoder_states, attention_states,
                                                        outcell, self.vocab_size, num_units,
@@ -130,7 +130,7 @@ class Dialogue(object):
 
         with tf.variable_scope('decoder'):
             if forward_only:
-                outputs, states, self.path, self.symbols, self.attentions = seq2seq_decoder(forward_only)
+                outputs, states, self.path, self.symbols, self.entropies, self.attentions = seq2seq_decoder(forward_only)
                 return
                 #outputs, states, self.atten_distributions, path, symbols = seq2seq_decoder(forward_only)
             else:
@@ -147,14 +147,14 @@ class Dialogue(object):
                                                     softmax_loss_function=softmax_loss_function)
 
         with tf.variable_scope('Optimizer'):
-            self.train_op = tf.train.AdamOptimizer(name='adam').minimize(self.loss)
+            self.train_op = tf.train.AdamOptimizer(learning_rate=0.00015, name='adam').minimize(self.loss)
 
         with tf.variable_scope("Saver"):
             self.saver = tf.train.Saver()
 
         with tf.variable_scope('summaries'):
-            loss_summary = tf.scalar_summary('loss', self.loss)
-            self.merged_summaries = tf.merge_all_summaries()
+            loss_summary = tf.summary.scalar('loss', self.loss)
+            self.merged_summaries = tf.summary.merge_all()
 
     def step(self, session, x, y, x_early_stops, forward_only=False):
         feed_dict = {self.inputs: np.expand_dims(x, 2)}
@@ -162,7 +162,7 @@ class Dialogue(object):
         feed_dict.update({self.early_stops: x_early_stops})
 
         if forward_only:
-            path, symbols, attentions = session.run([self.path, self.symbols, self.attentions], feed_dict)
+            path, symbols, entropies, attentions = session.run([self.path, self.symbols, self.entropies, self.attentions], feed_dict)
             return path, symbols, attentions
         else:
             _, loss = session.run([self.train_op, self.loss], feed_dict)
@@ -170,7 +170,7 @@ class Dialogue(object):
 
 
 if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES']='0,1' 
+    #os.environ['CUDA_VISIBLE_DEVICES']='1' 
 
     config = Config()
     bidirectional = True
@@ -182,27 +182,36 @@ if __name__ == '__main__':
 
         r = reader.Reader(vocab_size=config.vocab_size - 4, num_steps=config.num_steps, batch_size=config.batch_size)
 
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
 
         for epoch in xrange(500):
             print "Epoch: {}".format(epoch+1) 
             loss_list = []
             r.batch_size = config.batch_size
             s = time.time()
+            s_interval = s
             for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
                 loss = dialogue.step(session, x, y, x_early_steps)
                 loss_list.append(loss)
 
                 if step % 10 == 1:
-                    print "step {:<4}, loss: {:.4}".format(step, loss)
+                    t = time.time()
+                    interval = t - s_interval
+                    s_interval = t
+                    print "step {:>4}, loss: {:>4.2f}, Time elapsed: {:>4.2f}".format(step, loss, interval)
                     dialogue.saver.save(session, 'logdir/train/dialogue.ckpt') # save the model periodically
 
-            print "Mean loss: {:.4f}".format(np.mean(loss_list))
-            print "Time Elapsed: {:.4f}".format(time.time() - s)
+            print "Mean loss: {:.3f}".format(np.mean(loss_list))
+            print "Time Elapsed: {:.2f}".format(time.time() - s)
 
+            def ids_to_words(ids):
+                assert isinstance(ids, list)
+                words = map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], ids))
+                return ' '.join(words)
+                    
             r.batch_size = 1
             for step, (x, y, x_early_steps) in enumerate(r.dynamic_iterator()):
-                path, symbols, attentions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
+                path, symbols, entropies, attentions = evaluate_dialogue.step(session, x, y, x_early_steps, True)
                 
                 print("*"*40)
                 print "post     : ", ' '.join(
@@ -213,28 +222,40 @@ if __name__ == '__main__':
                 #print path
                 #print symbols #[-1, beam_size]
                 print "="*20
-
-                for i in xrange(symbols.shape[1]):
-                    print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind],
-                                                      filter(lambda ind: ind != r.control_word_to_id['<PAD>'],
-                                                             symbols[:, i])))
-                '''
-                assert x.shape[0] == len(indices[0])
-                indices = np.array(indices)#shape: (T, B)
-                for i in range(indices.shape[1]):
-                    print "************"
-                    print "post     : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], x[i])))
-                    print "reference: ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], y[i])))
-                    #print "response : ", ' '.join(map(lambda ind: r.id_to_word[ind], filter(lambda ind: ind != r.control_word_to_id['<PAD>'], indices[:, i])))
-                    print "path: ", path
-                    print "symbols: ", symbols
-                    break # evaluate only one batch
-                '''
+        
+                #print "path: ", path 
+                #print "symbols: ", symbols
+                print "="*60
+                print "Generations"
+                print "="*60
+                assert path.shape == symbols.shape
+                assert path.shape == (config.num_steps-1, config.beam_size)
+                
+                candidates = []
+                for i in xrange(config.beam_size):
+                    sentence = []
+                    depth = config.num_steps - 1 - 1
+                    j = i
+                    #print "*"*40
+                    #print "j = {:2}".format(j)
+                    #print "*"*20
+                    while True:
+                            #if i < 3:
+                                #print "depth: {}, ind: {}, symbol added: {}".format(depth, j, symbols[depth, j])
+			    sentence.append(symbols[depth, j])
+			    if depth > 0:
+				j = path[depth, j] # get the parent node current j
+                            elif depth == 0:
+                               break
+			    depth -= 1
+                    print "candidates {}: {}".format(i+1, ids_to_words(sentence[::-1]))
+                    candidates.append(sentence)
 
                 print "Attentions: "
                 for ind, attn in enumerate(attentions):
                     #print "atten of step %d: " %(step+1) , attn[0]
-                    print "argmax: ", np.argmax(attn[0]), "the word attentioned: ", r.id_to_word[x[0][np.argmax(attn[0])]]
+                    if ind < 4:
+                        print "argmax: ", np.argmax(attn[0]), "the word attentioned: ", r.id_to_word[x[0][np.argmax(attn[0])]]
                 
                 if step == 10:
                     break
