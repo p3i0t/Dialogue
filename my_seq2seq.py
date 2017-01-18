@@ -73,6 +73,7 @@ def _extract_argmax_and_embed(embedding, output_projection=None,
     return emb_prev
   return loop_function
 
+
 def _extract_beam_search(embedding, beam_size, num_symbols, embedding_size,  output_projection=None,
                               update_embedding=True):
   """Get a loop_function that extracts the previous symbol and embeds it.
@@ -87,30 +88,29 @@ def _extract_beam_search(embedding, beam_size, num_symbols, embedding_size,  out
   Returns:
     A loop function.
   """
-  def loop_function(prev, i, log_beam_probs, beam_path, beam_symbols):
+  def loop_function(prev, i, log_beam_probs, beam_path, beam_symbols, beam_entropies):
     if output_projection is not None:
       prev = nn_ops.xw_plus_b(
           prev, output_projection[0], output_projection[1])
     # prev= prev.get_shape().with_rank(2)[1]
-    #print ("prev: ", prev)
-    probs  = tf.log(tf.nn.softmax(prev))
+    p = tf.nn.softmax(prev)
+    probs  = tf.log(p)
+    entropies = tf.matmul(p, tf.transpose(probs))
 
     if i > 1:
         probs = tf.reshape(probs + log_beam_probs[-1],
                                [-1, beam_size * num_symbols])
-    #print('i = {}, probs: {}'.format(i, probs))
     best_probs, indices = tf.nn.top_k(probs, beam_size)
-    #print('i = {}, indices: {}'.format(i, indices))
     indices = tf.stop_gradient(tf.squeeze(tf.reshape(indices, [-1, 1])))
     best_probs = tf.stop_gradient(tf.reshape(best_probs, [-1, 1]))
 
     symbols = indices % num_symbols # Which word in vocabulary.
     beam_parent = indices // num_symbols # Which hypothesis it came from.
 
-
     beam_symbols.append(symbols)
     beam_path.append(beam_parent)
     log_beam_probs.append(best_probs)
+    beam_entropies.append(entropies)
 
     # Note that gradients will not propagate through the second parameter of
     # embedding_lookup.
@@ -201,7 +201,7 @@ def beam_rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
     state = initial_state
     outputs = []
     prev = None
-    log_beam_probs, beam_path, beam_symbols = [],[],[]
+    log_beam_probs, beam_path, beam_symbols, beam_entropies = [], [], [], []
     state_size = int(initial_state[0].get_shape().with_rank(2)[1])
 
     for i, inp in enumerate(decoder_inputs):
@@ -223,11 +223,10 @@ def beam_rnn_decoder(decoder_inputs, initial_state, cell, loop_function=None,
                 states.append(state)
           state = tf.reshape(tf.concat(0, states), [-1, state_size])
           state = (state, )
-
       #outputs.append(tf.argmax(nn_ops.xw_plus_b(
       #    output, output_projection[0], output_projection[1]), dimension=1))
-  return outputs, state, tf.reshape(tf.concat(0, beam_path), [-1, beam_size]), tf.reshape(tf.concat(0, beam_symbols),
-                                                                                          [-1, beam_size])
+  return outputs, state, tf.reshape(tf.concat(0, beam_path), [-1, beam_size]), \
+         tf.reshape(tf.concat(0, beam_symbols), [-1, beam_size]), tf.reshape(tf.concat(0, beam_entropies), [-1, beam_size])
 
 
 def embedding_rnn_decoder(decoder_inputs, initial_state, cell, num_symbols,
@@ -635,7 +634,7 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
        attns = []
        attns.append(tmp)
 
-    log_beam_probs, beam_path, beam_symbols, attentions = [], [], [], []
+    log_beam_probs, beam_path, beam_symbols, beam_entropies, attentions = [], [], [], [], []
 
     for i, inp in enumerate(decoder_inputs):
 
@@ -645,7 +644,7 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
       if loop_function is not None :
         with variable_scope.variable_scope("loop_function", reuse=True):
             if prev is not None:
-                inp = loop_function(prev, i, log_beam_probs, beam_path, beam_symbols)
+                inp = loop_function(prev, i, log_beam_probs, beam_path, beam_symbols, beam_entropies)
 
       input_size = inp.get_shape().with_rank(2)[1]
       x = linear([inp] + attns, input_size, True)
@@ -678,10 +677,10 @@ def beam_attention_decoder(decoder_inputs, initial_state, attention_states, cell
 
       #outputs.append(tf.argmax(nn_ops.xw_plus_b(
       #    output, output_projection[0], output_projection[1]), dimension=1))
-      #outputs.append(nn_ops.xw_plus_b(
-      #    output, output_projection[0], output_projection[1]))
       outputs.append(output)
-  return outputs, state, tf.reshape(tf.concat(0, beam_path), [-1, beam_size]), tf.reshape(tf.concat(0, beam_symbols), [-1, beam_size]), attentions
+  return outputs, state, tf.reshape(tf.concat(0, beam_path), [-1, beam_size]), \
+         tf.reshape(tf.concat(0, beam_symbols), [-1, beam_size]), tf.reshape(tf.concat(0, beam_symbols), [-1, beam_size]), attentions
+
 
 def embedding_attention_decoder(decoder_inputs, initial_state, attention_states,
                                 cell, num_symbols, embedding_size, num_heads=1,
